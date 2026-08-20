@@ -41,7 +41,7 @@ requires-python = ">=3.13, <3.14"
 # have a stable build environment.
 dependencies = [
     "cop-ard-app @ git+ssh://git@github.com/bopen/cop-ard-app.git",  # TODO pin
-    "eopf==3.0.0rc4",
+    "eopf==3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -72,8 +72,3 @@ target-version = "py311"
 markers = ["integration", "unit", "need_files"]
 [[tool.uv.index]]
 url = "https://pypi.org/simple"
-
-# Add the gitlab token in your `.netrc` file to allow `uv lock`
-# s1-ard-core
-[[tool.uv.index]]
-url = "https://gitlab.eopf.copernicus.eu/api/v4/projects/114/packages/pypi/simple"
