@@ -23,6 +23,7 @@ def resumable_breakpoint(
     identifier: str,
     description: str | None = None,
     expected_outputs: int = 1,
+    optional_outputs: list[str] = [],
 ) -> Callable[..., Any]:
     if identifier in ["activate_all", "folder", "persist"]:
         raise InvalidConfigurationError(f"{identifier} is not allowed for breakpoint name")
@@ -88,13 +89,16 @@ def resumable_breakpoint(
                     filename = file.basename.removeprefix(filename_prefix)
                     key = filename.split("_")[0]
                     obj[key] = xr.open_datatree(file.to_zarr_store(), engine="zarr")  # type: ignore
+                for optional_output in optional_outputs:
+                    if optional_output not in obj:
+                        obj[optional_output] = None
                 logger.info(f"Breakpoint files for {identifier} found, skipping execution")
             else:
                 obj = func_in(*args, **kwargs)
 
             if not isinstance(obj, dict):
                 raise ValueError("Only dict breakpoint outputs are supported")
-            if any(not isinstance(val, xr.DataTree) for val in obj.values()):
+            if any(not isinstance(val, xr.DataTree | None) for val in obj.values()):
                 raise ValueError("Only DataTrees allowed as breakpoint dict values")
 
             if activate_inspection:
