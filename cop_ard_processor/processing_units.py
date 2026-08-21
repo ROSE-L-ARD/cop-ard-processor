@@ -1,4 +1,5 @@
 from cop_ard_app.area_projection import stack_geometry, stack_mask
+import cop_ard_processor
 import os
 
 import xarray as xr
@@ -30,6 +31,8 @@ def _is_multiburst(slcs: xr.DataTree):
 
 
 class ImportSLC(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @resumable_breakpoint(identifier="ImportSLC")
     def run(
         self,
@@ -67,6 +70,8 @@ class ImportSLC(EOProcessingUnit):
 
 
 class ImportOrbits(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs"]
@@ -100,6 +105,8 @@ class ImportOrbits(EOProcessingUnit):
 
 
 class ImportETAD(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs"]
@@ -133,6 +140,8 @@ class ImportETAD(EOProcessingUnit):
 
 
 class FinalizeImport(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs"]
@@ -163,6 +172,8 @@ class FinalizeImport(EOProcessingUnit):
 
 
 class ImportDEM(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs"]
@@ -211,6 +222,8 @@ class ImportDEM(EOProcessingUnit):
 
 
 class Simulation(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs", "dem"]
@@ -368,6 +381,8 @@ class Mask(EOProcessingUnit):
 
 
 class Coregistration(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs", "simulation", "simulation_ml"]
@@ -407,6 +422,8 @@ class Coregistration(EOProcessingUnit):
 
 
 class ImageMatching(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs"]
@@ -443,6 +460,8 @@ class ImageMatching(EOProcessingUnit):
 
 
 class CMLP(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs"]
@@ -480,6 +499,8 @@ class CMLP(EOProcessingUnit):
 
 
 class GMLP(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["cmlp", "simulation", "simulation_ml"]
