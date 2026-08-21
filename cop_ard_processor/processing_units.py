@@ -39,7 +39,7 @@ def _get_calibration_type(calibration_type: str, mode: str):
 
 
 class ImportSLC(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @resumable_breakpoint(identifier="ImportSLC")
     def run(
@@ -79,7 +79,7 @@ class ImportSLC(EOProcessingUnit):
 
 
 class ImportOrbits(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -114,7 +114,7 @@ class ImportOrbits(EOProcessingUnit):
 
 
 class ImportETAD(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -149,7 +149,7 @@ class ImportETAD(EOProcessingUnit):
 
 
 class FinalizeImport(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -181,7 +181,7 @@ class FinalizeImport(EOProcessingUnit):
 
 
 class ImportDEM(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -238,7 +238,7 @@ class ImportDEM(EOProcessingUnit):
 
 
 class Simulation(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -314,7 +314,7 @@ class Simulation(EOProcessingUnit):
 
 
 class Geometry(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -358,7 +358,7 @@ class Geometry(EOProcessingUnit):
 
 
 class Mask(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -397,7 +397,7 @@ class Mask(EOProcessingUnit):
 
 
 class Coregistration(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -438,7 +438,7 @@ class Coregistration(EOProcessingUnit):
 
 
 class ImageMatching(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -476,7 +476,7 @@ class ImageMatching(EOProcessingUnit):
 
 
 class CMLP(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -515,7 +515,7 @@ class CMLP(EOProcessingUnit):
 
 
 class GMLP(EOProcessingUnit):
-    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
