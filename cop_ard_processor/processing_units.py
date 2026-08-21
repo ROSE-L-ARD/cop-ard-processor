@@ -471,7 +471,6 @@ class ImageMatching(EOProcessingUnit):
 
         return {
             "slcs": slcs,  # currently broken? values overwritten on disk at hardcoded location
-            "disparity_map": disparity_map,
         }
 
 
