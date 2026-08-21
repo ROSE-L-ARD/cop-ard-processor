@@ -30,6 +30,14 @@ def _is_multiburst(slcs: xr.DataTree):
     return "bursts" in slcs
 
 
+def _do_recompute(mode: str):
+    return mode == "reference"
+
+
+def _get_calibration_type(calibration_type: str, mode: str):
+    return "BetaZero" if mode == "reference" else calibration_type
+
+
 class ImportSLC(EOProcessingUnit):
     PROCESSOR_NAME = "RoseLArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
@@ -40,9 +48,9 @@ class ImportSLC(EOProcessingUnit):
         adfs,
         mode,
         input_safe_files,
+        calibration_type,
         multiburst,
         indices,
-        recompute,
         workdir_path_static,
         workdir_path_dynamic,
         enable_dask,
@@ -50,6 +58,7 @@ class ImportSLC(EOProcessingUnit):
         **kwargs,
     ):
         slcs_path = _get_slcs_path(workdir_path_static, workdir_path_dynamic)
+        recompute = _do_recompute(mode)
         do_import = not (recompute and multiburst)
 
         slcs = import_slc_stack(
@@ -60,7 +69,7 @@ class ImportSLC(EOProcessingUnit):
             noise_removal_flag=True,
             apply_invalid_mask_flag=True,
             indices=indices,
-            calib_type="BetaZero",
+            calib_type=calibration_type,
             chunks=chunks,
             do_import=do_import,
             enable_dask=enable_dask,
@@ -155,11 +164,11 @@ class FinalizeImport(EOProcessingUnit):
         etad_files,
         workdir_path_static,
         workdir_path_dynamic,
-        recompute,
         enable_dask,
         **kwargs,
     ):
         slcs = inputs["slcs"]
+        recompute = _do_recompute(mode)
 
         slcs, reference_id = finalize_import(
             slcs=slcs,
@@ -199,15 +208,22 @@ class ImportDEM(EOProcessingUnit):
         multiburst = _is_multiburst(slcs)
 
         bbox = get_bbox(slcs)
-        dem_path = kwargs.get("dem", adfs["dem"])
+        dem_selection = kwargs.get(
+            "dem",  # override other options
+            "Copernicus" if mode == "reference" else adfs["dem"]
+        )
+        dem_path = dem_selection.path if hasattr(dem_selection, "path") else dem_selection
+        dem_storage_options = dem_selection.adf_params if hasattr(dem_selection, "adf_params") else None
+
 
         dem = import_dem(
             bbox=bbox,
             dem_type=dem_path,
             working_dir=workdir_path_dynamic,
             chunks=chunks,
+            storage_options_dem=dem_storage_options,
         )
-        dem_tree = stack_dem(
+        dem = stack_dem(
             dem,
             slcs,
             multiburst,
@@ -218,7 +234,7 @@ class ImportDEM(EOProcessingUnit):
             enable_dask=enable_dask,
         )
 
-        return {"dem": dem_tree}
+        return {"dem": dem}
 
 
 class Simulation(EOProcessingUnit):
@@ -236,13 +252,13 @@ class Simulation(EOProcessingUnit):
         mode,
         workdir_path_static,
         workdir_path_dynamic,
-        recompute,
         enable_dask,
         chunks,
         **kwargs,
     ):
         slcs = inputs["slcs"]
         dem = inputs["dem"]
+        recompute = _do_recompute(mode)
         reference_id = slcs.attrs["ref_id"]
         multiburst = _is_multiburst(slcs)
 
@@ -271,24 +287,24 @@ class Simulation(EOProcessingUnit):
             recompute=recompute,
             enable_dask=enable_dask,
         )
-        sec_orbits = extract_orbits(
-            slcs,
-            multiburst=multiburst,
-        )
-        sec_orbits = sec_orbits.where(sec_orbits.acquisition_id != reference_id, drop=True)
-        if sec_orbits.size != 0:
-            simulation_secondary = stack_simulation(
-                dem_tree=dem,
-                orbits=sec_orbits,
+        simulation_secondary = None
+        if mode == "secondary":
+            sec_orbits = extract_orbits(
+                slcs,
                 multiburst=multiburst,
-                working_directory=workdir_path_dynamic,
-                chunks={**chunks, "acquisition_date": 1},
-                master_image=False,
-                recompute=recompute,
-                enable_dask=enable_dask,
             )
-        else:
-            simulation_secondary = None
+            sec_orbits = sec_orbits.where(sec_orbits.acquisition_id != reference_id, drop=True)
+            if sec_orbits.size != 0:
+                simulation_secondary = stack_simulation(
+                    dem_tree=dem,
+                    orbits=sec_orbits,
+                    multiburst=multiburst,
+                    working_directory=workdir_path_dynamic,
+                    chunks={**chunks, "acquisition_date": 1},
+                    master_image=False,
+                    recompute=recompute,
+                    enable_dask=enable_dask,
+                )
 
         return {
             "simulation": simulation_tree,
@@ -395,7 +411,6 @@ class Coregistration(EOProcessingUnit):
         mode,
         workdir_path_static,
         workdir_path_dynamic,
-        recompute,
         enable_dask,
         **kwargs,
     ):
@@ -405,6 +420,7 @@ class Coregistration(EOProcessingUnit):
         simulation_secondary = inputs.get("simulation_secondary")
         reference_id = slcs.attrs["ref_id"]
         multiburst = _is_multiburst(slcs)
+        recompute = _do_recompute(mode)
 
         slcs = stack_coregistration(
             slcs,
