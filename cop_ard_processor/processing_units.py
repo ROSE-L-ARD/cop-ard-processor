@@ -1,3 +1,4 @@
+from cop_ard_app.area_projection import stack_geometry, stack_mask
 import os
 
 import xarray as xr
@@ -281,6 +282,89 @@ class Simulation(EOProcessingUnit):
             "simulation_ml": simulation_ml_tree,
             "simulation_secondary": simulation_secondary,
         }
+
+
+class Geometry(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
+    @classmethod
+    def get_mandatory_input_list(cls, mode=None, **kwargs):
+        return ["slcs", "simulation", "simulation_ml"]
+
+    @resumable_breakpoint(identifier="Geometry")
+    def run(
+        self,
+        inputs,
+        adfs,
+        mode,
+        workdir_path_static,
+        workdir_path_dynamic,
+        chunks,
+        enable_dask,
+        **kwargs,
+    ):
+        slcs = inputs["slcs"]
+        multiburst = _is_multiburst(slcs)
+        reference_id = slcs.attrs["ref_id"]
+        simulation = inputs["simulation"]
+        simulation_ml = inputs["simulation_ml"]
+        recompute = _do_recompute(mode)
+        
+        chunk_length = max([v for v in chunks.values()])
+
+        stack_geometry(  # side effects, no output but static dir modified
+            slcs,
+            simulation,
+            simulation_ml,
+            working_directory_static=workdir_path_static,
+            working_directory_tmp=workdir_path_dynamic,
+            reference_id=reference_id,
+            chunk_length=chunk_length,
+            recompute=recompute,
+            multiburst=multiburst,
+            enable_dask=enable_dask,
+        )
+
+        return {"slcs": slcs}  # maybe not needed? likely required for stop/resume breakpoints
+
+
+class Mask(EOProcessingUnit):
+    PROCESSOR_NAME = "RoseLArd"
+    PROCESSOR_VERSION = cop_ard_processor.__version__
+    @classmethod
+    def get_mandatory_input_list(cls, mode=None, **kwargs):
+        return ["slcs", "simulation", "simulation_ml"]
+
+    @resumable_breakpoint(identifier="Mask")
+    def run(
+        self,
+        inputs,
+        adfs,
+        mode,
+        workdir_path_static,
+        workdir_path_dynamic,
+        enable_dask,
+        **kwargs,
+    ):
+        slcs = inputs["slcs"]
+        multiburst = _is_multiburst(slcs)
+        reference_id = slcs.attrs["ref_id"]
+        simulation = inputs["simulation"]
+        simulation_ml = inputs["simulation_ml"]
+        recompute = _do_recompute(mode)
+        
+        stack_mask(
+            slcs,
+            simulation,
+            simulation_ml,
+            working_directory_static=workdir_path_static,
+            reference_id=reference_id,
+            recompute=recompute,
+            multiburst=multiburst,
+            enable_dask=enable_dask,
+        )
+
+        return {"slcs": slcs}  # maybe not needed? likely required for stop/resume breakpoints
 
 
 class Coregistration(EOProcessingUnit):
