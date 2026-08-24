@@ -38,6 +38,13 @@ def _get_calibration_type(calibration_type: str, mode: str):
     return "BetaZero" if mode == "reference" else calibration_type
 
 
+def _set_reference_id(dt: xr.DataTree, ref_id: str):
+    dt.attrs["ref_id"] = ref_id
+    
+def _get_reference_id(dt: xr.DataTree):
+    return dt.attrs["ref_id"]
+    
+
 class ImportSLC(EOProcessingUnit):
     PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
@@ -176,7 +183,7 @@ class FinalizeImport(EOProcessingUnit):
             recompute=recompute,
             enable_dask=enable_dask,
         )
-        slcs.attrs["ref_id"] = reference_id  # monkey patch: maybe fetch as a cop-ard-app util function?
+        _set_reference_id(slcs, reference_id)
         return {"slcs": slcs}
 
 
@@ -259,7 +266,7 @@ class Simulation(EOProcessingUnit):
         slcs = inputs["slcs"]
         dem = inputs["dem"]
         recompute = _do_recompute(mode)
-        reference_id = slcs.attrs["ref_id"]
+        reference_id = _get_reference_id(slcs)
         multiburst = _is_multiburst(slcs)
 
         orbits = extract_orbits(
@@ -334,7 +341,7 @@ class Geometry(EOProcessingUnit):
     ):
         slcs = inputs["slcs"]
         multiburst = _is_multiburst(slcs)
-        reference_id = slcs.attrs["ref_id"]
+        reference_id = _get_reference_id(slcs)
         simulation = inputs["simulation"]
         simulation_ml = inputs["simulation_ml"]
         recompute = _do_recompute(mode)
@@ -377,7 +384,7 @@ class Mask(EOProcessingUnit):
     ):
         slcs = inputs["slcs"]
         multiburst = _is_multiburst(slcs)
-        reference_id = slcs.attrs["ref_id"]
+        reference_id = _get_reference_id(slcs)
         simulation = inputs["simulation"]
         simulation_ml = inputs["simulation_ml"]
         recompute = _do_recompute(mode)
@@ -418,7 +425,7 @@ class Coregistration(EOProcessingUnit):
         simulation = inputs["simulation"]
         simulation_ml = inputs["simulation_ml"]
         simulation_secondary = inputs.get("simulation_secondary")
-        reference_id = slcs.attrs["ref_id"]
+        reference_id = _get_reference_id(slcs)
         multiburst = _is_multiburst(slcs)
         recompute = _do_recompute(mode)
 
@@ -456,7 +463,7 @@ class ImageMatching(EOProcessingUnit):
         **kwargs,
     ):
         slcs = inputs["slcs"]
-        reference_id = slcs.attrs["ref_id"]
+        reference_id = _get_reference_id(slcs)
 
         disparity_map = stack_disparity(
             slcs,
