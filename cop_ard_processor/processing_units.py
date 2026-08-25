@@ -40,15 +40,16 @@ def _get_calibration_type(calibration_type: str, mode: str):
 
 def _set_reference_id(dt: xr.DataTree, ref_id: str):
     dt.attrs["ref_id"] = ref_id
-    
+
+
 def _get_reference_id(dt: xr.DataTree):
     return dt.attrs["ref_id"]
-    
 
-class ImportSLC(EOProcessingUnit):
+
+class Calibration(EOProcessingUnit):
     PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
-    @resumable_breakpoint(identifier="ImportSLC")
+    @resumable_breakpoint(identifier="Calibration")
     def run(
         self,
         inputs,
@@ -62,6 +63,8 @@ class ImportSLC(EOProcessingUnit):
         workdir_path_dynamic,
         enable_dask,
         chunks,
+        orbit_files = None,
+        etad_files = None,
         **kwargs,
     ):
         slcs_path = _get_slcs_path(workdir_path_static, workdir_path_dynamic)
@@ -82,100 +85,26 @@ class ImportSLC(EOProcessingUnit):
             enable_dask=enable_dask,
         )
 
-        return {"slcs": slcs}
+        if orbit_files:
+            acquisition_dates = extract_acquisition_dates(slcs, multiburst)
+            slcs, used_orbits = import_ORBIT(
+                slcs,
+                acquisition_dates,
+                orbit_files,
+                multiburst=multiburst,
+                wdir_path=workdir_path_dynamic,
+                enable_dask=enable_dask,
+            )
 
-
-class ImportOrbits(EOProcessingUnit):
-    PROCESSOR_NAME = "CopArd"
-    PROCESSOR_VERSION = cop_ard_processor.__version__
-    @classmethod
-    def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs"]
-
-    @resumable_breakpoint(identifier="ImportOrbits")
-    def run(
-        self,
-        inputs,
-        adfs,
-        mode,
-        orbit_files,
-        workdir_path_static,
-        workdir_path_dynamic,
-        enable_dask,
-        **kwargs,
-    ):
-        slcs = inputs["slcs"]
-        multiburst = _is_multiburst(slcs)
-        acquisition_dates = extract_acquisition_dates(slcs, multiburst)
-
-        slcs, used_orbits = import_ORBIT(
-            slcs,
-            acquisition_dates,
-            orbit_files,
-            multiburst=multiburst,
-            wdir_path=workdir_path_dynamic,
-            enable_dask=enable_dask,
-        )
-
-        return {"slcs": slcs}
-
-
-class ImportETAD(EOProcessingUnit):
-    PROCESSOR_NAME = "CopArd"
-    PROCESSOR_VERSION = cop_ard_processor.__version__
-    @classmethod
-    def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs"]
-
-    @resumable_breakpoint(identifier="ImportETAD")
-    def run(
-        self,
-        inputs,
-        adfs,
-        mode,
-        etad_files,
-        workdir_path_static,
-        workdir_path_dynamic,
-        enable_dask,
-        **kwargs,
-    ):
-        slcs = inputs["slcs"]
-        multiburst = _is_multiburst(slcs)
-        acquisition_dates = extract_acquisition_dates(slcs, multiburst)
-
-        slcs, used_etad = import_ETAD(
-            slcs,
-            acquisition_dates,
-            etad_files,
-            multiburst=multiburst,
-            wdir_path=workdir_path_dynamic,
-            enable_dask=enable_dask,
-        )
-
-        return {"slcs": slcs}
-
-
-class FinalizeImport(EOProcessingUnit):
-    PROCESSOR_NAME = "CopArd"
-    PROCESSOR_VERSION = cop_ard_processor.__version__
-    @classmethod
-    def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs"]
-
-    @resumable_breakpoint(identifier="FinalizeImport")
-    def run(
-        self,
-        inputs,
-        adfs,
-        mode,
-        etad_files,
-        workdir_path_static,
-        workdir_path_dynamic,
-        enable_dask,
-        **kwargs,
-    ):
-        slcs = inputs["slcs"]
-        recompute = _do_recompute(mode)
+        if etad_files:
+            slcs, used_etad = import_ETAD(
+                slcs,
+                acquisition_dates,
+                etad_files,
+                multiburst=multiburst,
+                wdir_path=workdir_path_dynamic,
+                enable_dask=enable_dask,
+            )
 
         slcs, reference_id = finalize_import(
             slcs=slcs,
@@ -184,10 +113,11 @@ class FinalizeImport(EOProcessingUnit):
             enable_dask=enable_dask,
         )
         _set_reference_id(slcs, reference_id)
+
         return {"slcs": slcs}
 
 
-class ImportDEM(EOProcessingUnit):
+class ReferenceDEM(EOProcessingUnit):
     PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
@@ -198,7 +128,7 @@ class ImportDEM(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         return ["dem"]
 
-    @resumable_breakpoint(identifier="ImportDEM")
+    @resumable_breakpoint(identifier="ReferenceDEM")
     def run(
         self,
         inputs,
@@ -222,7 +152,6 @@ class ImportDEM(EOProcessingUnit):
         dem_path = dem_selection.path if hasattr(dem_selection, "path") else dem_selection
         dem_storage_options = dem_selection.adf_params if hasattr(dem_selection, "adf_params") else None
 
-
         dem = import_dem(
             bbox=bbox,
             dem_type=dem_path,
@@ -230,6 +159,7 @@ class ImportDEM(EOProcessingUnit):
             chunks=chunks,
             storage_options_dem=dem_storage_options,
         )
+
         dem = stack_dem(
             dem,
             slcs,
@@ -244,14 +174,14 @@ class ImportDEM(EOProcessingUnit):
         return {"dem": dem}
 
 
-class Simulation(EOProcessingUnit):
+class ReferenceGeometry(EOProcessingUnit):
     PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "dem"]
+        return ["slcs", "dem", "simulation", "simulation_ml"]
 
-    @resumable_breakpoint(identifier="Simulation")
+    @resumable_breakpoint(identifier="ReferenceGeometry")
     def run(
         self,
         inputs,
@@ -259,15 +189,17 @@ class Simulation(EOProcessingUnit):
         mode,
         workdir_path_static,
         workdir_path_dynamic,
-        enable_dask,
         chunks,
+        enable_dask,
         **kwargs,
     ):
         slcs = inputs["slcs"]
         dem = inputs["dem"]
-        recompute = _do_recompute(mode)
-        reference_id = _get_reference_id(slcs)
         multiburst = _is_multiburst(slcs)
+        reference_id = _get_reference_id(slcs)
+        recompute = _do_recompute(mode)
+        
+        chunk_length = max([v for v in chunks.values()])
 
         orbits = extract_orbits(
             slcs,
@@ -294,64 +226,11 @@ class Simulation(EOProcessingUnit):
             recompute=recompute,
             enable_dask=enable_dask,
         )
-        simulation_secondary = None
-        if mode == "secondary":
-            sec_orbits = extract_orbits(
-                slcs,
-                multiburst=multiburst,
-            )
-            sec_orbits = sec_orbits.where(sec_orbits.acquisition_id != reference_id, drop=True)
-            if sec_orbits.size != 0:
-                simulation_secondary = stack_simulation(
-                    dem_tree=dem,
-                    orbits=sec_orbits,
-                    multiburst=multiburst,
-                    working_directory=workdir_path_dynamic,
-                    chunks={**chunks, "acquisition_date": 1},
-                    master_image=False,
-                    recompute=recompute,
-                    enable_dask=enable_dask,
-                )
-
-        return {
-            "simulation": simulation_tree,
-            "simulation_ml": simulation_ml_tree,
-            "simulation_secondary": simulation_secondary,
-        }
-
-
-class Geometry(EOProcessingUnit):
-    PROCESSOR_NAME = "CopArd"
-    PROCESSOR_VERSION = cop_ard_processor.__version__
-    @classmethod
-    def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "simulation", "simulation_ml"]
-
-    @resumable_breakpoint(identifier="Geometry")
-    def run(
-        self,
-        inputs,
-        adfs,
-        mode,
-        workdir_path_static,
-        workdir_path_dynamic,
-        chunks,
-        enable_dask,
-        **kwargs,
-    ):
-        slcs = inputs["slcs"]
-        multiburst = _is_multiburst(slcs)
-        reference_id = _get_reference_id(slcs)
-        simulation = inputs["simulation"]
-        simulation_ml = inputs["simulation_ml"]
-        recompute = _do_recompute(mode)
-        
-        chunk_length = max([v for v in chunks.values()])
 
         stack_geometry(  # side effects, no output but static dir modified
             slcs,
-            simulation,
-            simulation_ml,
+            simulation_tree,
+            simulation_ml_tree,
             working_directory_static=workdir_path_static,
             working_directory_tmp=workdir_path_dynamic,
             reference_id=reference_id,
@@ -361,38 +240,10 @@ class Geometry(EOProcessingUnit):
             enable_dask=enable_dask,
         )
 
-        return {"slcs": slcs}  # maybe not needed? likely required for stop/resume breakpoints
-
-
-class Mask(EOProcessingUnit):
-    PROCESSOR_NAME = "CopArd"
-    PROCESSOR_VERSION = cop_ard_processor.__version__
-    @classmethod
-    def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "simulation", "simulation_ml"]
-
-    @resumable_breakpoint(identifier="Mask")
-    def run(
-        self,
-        inputs,
-        adfs,
-        mode,
-        workdir_path_static,
-        workdir_path_dynamic,
-        enable_dask,
-        **kwargs,
-    ):
-        slcs = inputs["slcs"]
-        multiburst = _is_multiburst(slcs)
-        reference_id = _get_reference_id(slcs)
-        simulation = inputs["simulation"]
-        simulation_ml = inputs["simulation_ml"]
-        recompute = _do_recompute(mode)
-        
         stack_mask(
             slcs,
-            simulation,
-            simulation_ml,
+            simulation_tree,
+            simulation_ml_tree,
             working_directory_static=workdir_path_static,
             reference_id=reference_id,
             recompute=recompute,
@@ -400,7 +251,10 @@ class Mask(EOProcessingUnit):
             enable_dask=enable_dask,
         )
 
-        return {"slcs": slcs}  # maybe not needed? likely required for stop/resume breakpoints
+        return {
+            "simulation": simulation_tree,
+            "simulation_ml": simulation_ml_tree,
+        }
 
 
 class Coregistration(EOProcessingUnit):
@@ -408,7 +262,7 @@ class Coregistration(EOProcessingUnit):
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "simulation", "simulation_ml"]
+        return ["slcs", "dem", "simulation", "simulation_ml"]
 
     @resumable_breakpoint(identifier="Coregistration")
     def run(
@@ -419,15 +273,36 @@ class Coregistration(EOProcessingUnit):
         workdir_path_static,
         workdir_path_dynamic,
         enable_dask,
+        chunks,
         **kwargs,
     ):
         slcs = inputs["slcs"]
+        dem = inputs["dem"]
         simulation = inputs["simulation"]
         simulation_ml = inputs["simulation_ml"]
         simulation_secondary = inputs.get("simulation_secondary")
         reference_id = _get_reference_id(slcs)
         multiburst = _is_multiburst(slcs)
         recompute = _do_recompute(mode)
+
+        sec_orbits = extract_orbits(
+            slcs,
+            multiburst=multiburst,
+        )
+
+        simulation_secondary = None
+        sec_orbits = sec_orbits.where(sec_orbits.acquisition_id != reference_id, drop=True)
+        if sec_orbits.size != 0:
+            simulation_secondary = stack_simulation(
+                dem_tree=dem,
+                orbits=sec_orbits,
+                multiburst=multiburst,
+                working_directory=workdir_path_dynamic,
+                chunks={**chunks, "acquisition_date": 1},
+                master_image=False,
+                recompute=recompute,
+                enable_dask=enable_dask,
+            )
 
         slcs = stack_coregistration(
             slcs,
@@ -444,14 +319,14 @@ class Coregistration(EOProcessingUnit):
         return {"slcs": slcs}
 
 
-class ImageMatching(EOProcessingUnit):
+class CMLP(EOProcessingUnit):
     PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["slcs"]
 
-    @resumable_breakpoint(identifier="ImageMatching")
+    @resumable_breakpoint(identifier="CMLP")
     def run(
         self,
         inputs,
@@ -476,34 +351,6 @@ class ImageMatching(EOProcessingUnit):
             enable_dask=False,
         )
 
-        return {
-            "slcs": slcs,  # currently broken? values overwritten on disk at hardcoded location
-        }
-
-
-class CMLP(EOProcessingUnit):
-    PROCESSOR_NAME = "CopArd"
-    PROCESSOR_VERSION = cop_ard_processor.__version__
-    @classmethod
-    def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs"]
-
-    @resumable_breakpoint(identifier="CMLP")
-    def run(
-        self,
-        inputs,
-        adfs,
-        mode,
-        workdir_path_static,
-        workdir_path_dynamic,
-        posting,
-        stable_interval_days,
-        reference_database_path,
-        enable_dask,
-        **kwargs,
-    ):
-        slcs = inputs["slcs"]
-
         cmlp, current_reference, stable_references = stack_cmlp(
             slcs=slcs,
             posting=posting,
@@ -520,14 +367,14 @@ class CMLP(EOProcessingUnit):
         }
 
 
-class GMLP(EOProcessingUnit):
+class Geocoding(EOProcessingUnit):
     PROCESSOR_NAME = "CopArd"
     PROCESSOR_VERSION = cop_ard_processor.__version__
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         return ["cmlp", "simulation", "simulation_ml"]
 
-    @resumable_breakpoint(identifier="GMLP")
+    @resumable_breakpoint(identifier="Geocoding")
     def run(
         self,
         inputs,
