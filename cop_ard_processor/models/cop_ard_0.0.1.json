@@ -1,8 +1,0 @@
-{
-    "available_modes": ["reference", "secondary"],
-    "default_mode": "secondary",
-    "modes_config": {
-        "reference": {},
-        "secondary": {}
-    }
-}
