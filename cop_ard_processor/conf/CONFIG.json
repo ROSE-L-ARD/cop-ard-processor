@@ -71,7 +71,16 @@
       "warp_kaiser_beta": 6,
       "initialize_current_reference": false,
       "do_image_matching": true,
-      "do_split_spectrum": true
+      "do_split_spectrum": true,
+      "degree": 2,
+      "cohe_th": 0.3,
+      "norm": 1,
+      "matching_kernel_shape": [15, 15],
+      "wsize": [256, 256],
+      "wstep": [256, 256],
+      "wsearch": [5, 5],
+      "dim": [1, 1],
+      "block_size": 10
     },
     "ReferenceUpdate": {
       "posting": { "azimuth_time": 2, "slant_range_time": 8 },
@@ -174,7 +183,26 @@
       "do_reramp": true,
       "warp_ov_fact": 100000,
       "warp_kernel_shape": [11, 11],
-      "warp_kaiser_beta": 6
+      "warp_kaiser_beta": 6,
+      "initialize_current_reference": false,
+      "do_image_matching": true,
+      "do_split_spectrum": true,
+      "degree": 2,
+      "cohe_th": 0.3,
+      "norm": 1,
+      "matching_kernel_shape": [15, 15],
+      "wsize": [256, 256],
+      "wstep": [256, 256],
+      "wsearch": [5, 5],
+      "dim": [1, 1],
+      "block_size": 10
+    },
+    "ReferenceUpdate": {
+      "posting": { "azimuth_time": 2, "slant_range_time": 8 },
+      "memory_param": 0.95,
+      "coherence_threshold": 0.1,
+      "stable_interval_days": 365,
+      "max_past_stable_history": 10
     },
     "Geocoding": {
       "coregistration": true,
@@ -247,7 +275,7 @@
         "x": 1024,
         "y": 1024
       },
-      "recompute": true,
+      "recompute": false,
       "reference_date": null
     },
     "Calibration": {
@@ -272,8 +300,17 @@
       "warp_kernel_shape": [11, 11],
       "warp_kaiser_beta": 6,
       "initialize_current_reference": false,
-      "do_image_matching": false,
-      "do_split_spectrum": false
+      "do_image_matching": true,
+      "do_split_spectrum": true,
+      "degree": 2,
+      "cohe_th": 0.3,
+      "norm": 1,
+      "matching_kernel_shape": [15, 15],
+      "wsize": [256, 256],
+      "wstep": [256, 256],
+      "wsearch": [5, 5],
+      "dim": [1, 1],
+      "block_size": 10
     },
     "ReferenceUpdate": {
       "posting": { "azimuth_time": 2, "slant_range_time": 8 },
