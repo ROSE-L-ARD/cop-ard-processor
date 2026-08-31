@@ -40,12 +40,12 @@ def _is_multiburst(slcs: xr.DataTree):
     return "bursts" in slcs
 
 
-class Calibration(EOProcessingUnit):
+class Ingestion(EOProcessingUnit):
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         return ["REFERENCE_DB"]
 
-    @resumable_breakpoint(identifier="Calibration")
+    @resumable_breakpoint(identifier="Ingestion")
     def run(self, inputs, adfs=None, **kwargs):
         input_slcs_files = kwargs.get("input_slcs_files")
         if input_slcs_files is None:
@@ -59,12 +59,12 @@ class Calibration(EOProcessingUnit):
         recompute = kwargs.get("recompute", config["Global"]["recompute"])
         chunks = kwargs.get("chunks", config["Global"]["chunks_radar_grid"])
 
-        calibration_type = kwargs.get("calibration_type", config["Calibration"]["calibration_type"])
-        indices = kwargs.get("indices", config["Calibration"]["indices"])
-        polarization = kwargs.get("polarization", config["Calibration"]["polarization"])
-        deramp = kwargs.get("deramp", config["Calibration"]["deramp"])
-        noise_removal = kwargs.get("noise_removal", config["Calibration"]["noise_removal"])
-        apply_invalid_mask = kwargs.get("apply_invalid_mask", config["Calibration"]["apply_invalid_mask"])
+        calibration_type = kwargs.get("calibration_type", config["Ingestion"]["calibration_type"])
+        indices = kwargs.get("indices", config["Ingestion"]["indices"])
+        polarization = kwargs.get("polarization", config["Ingestion"]["polarization"])
+        deramp = kwargs.get("deramp", config["Ingestion"]["deramp"])
+        noise_removal = kwargs.get("noise_removal", config["Ingestion"]["noise_removal"])
+        apply_invalid_mask = kwargs.get("apply_invalid_mask", config["Ingestion"]["apply_invalid_mask"])
 
         reference_id = kwargs.get("reference_id")
         params = {
