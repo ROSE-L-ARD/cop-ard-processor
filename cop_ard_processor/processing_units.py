@@ -401,7 +401,6 @@ class Coregistration(EOProcessingUnit):
         config = get_config(params["mode"])
 
         # 3. Extract logic-controlling parameters
-        # Use .get() to avoid KeyErrors if 'initialize_current_reference' is missing in older configs
         initialize_current_reference = kwargs.get(
             "initialize_current_reference", config["Coregistration"]["initialize_current_reference"]
         )
@@ -429,6 +428,15 @@ class Coregistration(EOProcessingUnit):
         ov_fact = kwargs.get("warp_ov_fact", config["Coregistration"]["warp_ov_fact"])
         kernel_shape = kwargs.get("warp_kernel_shape", config["Coregistration"]["warp_kernel_shape"])
         kaiser_beta = kwargs.get("warp_kaiser_beta", config["Coregistration"]["warp_kaiser_beta"])
+        degree = kwargs.get("degree", config["Coregistration"]["degree"])
+        cohe_th = kwargs.get("cohe_th", config["Coregistration"]["cohe_th"])
+        norm = kwargs.get("norm", config["Coregistration"]["norm"])
+        matching_kernel_shape = kwargs.get("matching_kernel_shape", config["Coregistration"]["matching_kernel_shape"])
+        wsize = kwargs.get("wsize", config["Coregistration"]["wsize"])
+        wstep = kwargs.get("wstep", config["Coregistration"]["wstep"])
+        wsearch = kwargs.get("wsearch", config["Coregistration"]["wsearch"])
+        dim = kwargs.get("dim", config["Coregistration"]["dim"])
+        block_size = kwargs.get("block_size", config["Coregistration"]["block_size"])
 
         reference_id = params["reference_id"]
 
@@ -497,11 +505,11 @@ class Coregistration(EOProcessingUnit):
             recompute=recompute,
         )
 
-        # 9. Finalize coregistration (attaches current reference if available/required)
         logger.debug(f"reference_id : {reference_id}")
         logger.debug(f"init current ref: {initialize_current_reference}")
         logger.debug(f"image_matching: {do_image_matching}")
         logger.debug(f"split spectrum : {do_split_spectrum}")
+
         slcs = finalize_coreg(
             slcs=slcs,
             working_directory=working_directory_reference_db_dynamic,
@@ -509,18 +517,27 @@ class Coregistration(EOProcessingUnit):
             do_image_matching=do_image_matching,
             do_split_spectrum=do_split_spectrum,
         )
-
-        # 10. Image matching refinement block
+        # 9. Image matching refinement block
         if do_image_matching:
             disparity_map = stack_disparity(
-                slcs,
-                reference_id,
+                slcs=slcs,
+                reference_id=reference_id,
+                wsize=wsize,
+                wstep=wstep,
+                wsearch=wsearch,
+                dim=dim,
+                block_size=block_size,
                 enable_dask=enable_dask,
             )
             logger.debug(f"disparity map : {disparity_map}")
+
             x_poly, y_poly = estimate_poly_matching(
-                slcs,
-                disparity_map,
+                slcs=slcs,
+                disparity_map=disparity_map,
+                degree=degree,
+                cohe_th=cohe_th,
+                norm=norm,
+                kernel_shape=matching_kernel_shape,  # Uso il nome specifico per evitare conflitti
                 enable_dask=enable_dask,
             )
             logger.debug(f"x_poly: {x_poly}")
@@ -532,20 +549,28 @@ class Coregistration(EOProcessingUnit):
 
             # Re-run coregistration with matching polynomials applied
             slcs = stack_coregistration(
-                slcs,
-                simulation_tree,
-                simulation_ml_tree,
-                reference_id,
+                slcs=slcs,
+                simulation_reference_tree=simulation_tree,
+                simulation_ml_tree=simulation_ml_tree,
+                reference_id=reference_id,
                 simulation_secondary_tree=simulation_secondary_tree,
                 multiburst=multiburst,
                 working_directory=f"{working_directory_dynamic}/image_matching",
-                enable_dask=enable_dask,
+                warp_ov_fact=ov_fact,
+                warp_kernel_shape=kernel_shape,
+                warp_kaiser_beta=kaiser_beta,
+                storage_options=storage_options_dynamic,
+                do_reramp=do_reramp,
+                do_flattening=do_flattening,
                 recompute=recompute,
+                enable_dask=enable_dask,
                 x_poly=x_poly,
                 y_poly=y_poly,
             )
 
-        # TODO: fix structure
+        if do_split_spectrum:
+            pass  # TODO: Aggiungi logica per split spectrum
+
         cslcs = slcs
         return {"cslcs": cslcs, "slcs": slcs}
 
@@ -611,8 +636,8 @@ class ReferenceUpdate(EOProcessingUnit):
         # TODO: write script to do this externally.
         from cop_ard_app.utils import update_reference_database
 
-        logger.debug("DISABLED SAVING CURRENT REFERENCE")
-        # update_reference_database(current_reference, stable_references, working_directory_reference_db_dynamic)
+        # logger.debug("DISABLED SAVING CURRENT REFERENCE")
+        update_reference_database(current_reference, stable_references, working_directory_reference_db_dynamic)
 
         return {
             "current_reference": current_reference,
