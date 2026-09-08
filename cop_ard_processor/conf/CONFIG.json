@@ -8,8 +8,7 @@
       "product_data_access": "https://link_product",
       "product_pixel_coordinate_convention": "pixel-center",
       "cslc_status": "nominal",
-      "gslc_status": "nominal",
-      "nrb_status": "nominal",
+      "gmlp_status": "nominal",
       "product_filtering": "TBD",
       "eastern_geometric_accuracy": {
         "bias": 0,
@@ -28,7 +27,7 @@
           "roles": ["producer"]
         },
         {
-          "name": "Sentinel-1 ARD Core",
+          "name": "COP ARD Processor",
           "description": "Analysis Ready Data Processor",
           "roles": ["processor"]
         }
@@ -75,15 +74,24 @@
       "initialize_current_reference": false,
       "do_image_matching": true,
       "do_split_spectrum": true,
-      "degree": 2,
-      "cohe_th": 0.3,
-      "norm": 1,
+      "coherence_threshold_image_matching": 0.3,
+      "image_matching_degree": 2,
       "matching_kernel_shape": [15, 15],
       "wsize": [256, 256],
       "wstep": [256, 256],
       "wsearch": [5, 5],
       "dim": [1, 1],
-      "block_size": 10
+      "block_size": 10,
+      "bandwidth": 16e6,
+      "frequency_offset": 10e6,
+      "multilook_split_spectrum": {
+        "azimuth_time": 16,
+        "slant_range_time": 64
+      },
+      "esd_poly_degree": 2,
+      "split_spectrum_poly_degree": 2,
+      "height_ionosphere": null,
+      "coherence_threshold_split_spectrum": 0.3
     },
     "ReferenceUpdate": {
       "posting": { "azimuth_time": 2, "slant_range_time": 8 },
@@ -93,28 +101,13 @@
       "max_past_stable_history": 10
     },
     "Geocoding": {
-      "coregistration": true,
-      "gamma_flattening": true,
-      "include_phase": false,
-      "chunksizes": {
-        "acquisition_id": 1,
-        "polarization": 1
-      },
       "spacing": {
-        "x": 5,
-        "y": 10
-      }
-    },
-    "Mosaicking": {
-      "interpolation": {
-        "method": "cubic",
-        "border_pixel": 4,
-        "threshold": 1e-5
+        "x": 50,
+        "y": 50
       },
-      "gaussian_blur": {
-        "size": 5,
-        "sigma": 0.5
-      }
+      "warp_ov_fact": 100000,
+      "warp_kernel_shape": [11, 11],
+      "warp_kaiser_beta": 6
     }
   },
   "EW": {
@@ -193,15 +186,24 @@
       "initialize_current_reference": false,
       "do_image_matching": true,
       "do_split_spectrum": true,
-      "degree": 2,
-      "cohe_th": 0.3,
-      "norm": 1,
+      "coherence_threshold_image_matching": 0.3,
+      "image_matching_degree": 2,
       "matching_kernel_shape": [15, 15],
       "wsize": [256, 256],
       "wstep": [256, 256],
       "wsearch": [5, 5],
       "dim": [1, 1],
-      "block_size": 10
+      "block_size": 10,
+      "bandwidth": 16e6,
+      "frequency_offset": 10e6,
+      "multilook_split_spectrum": {
+        "azimuth_time": 16,
+        "slant_range_time": 64
+      },
+      "esd_poly_degree": 2,
+      "split_spectrum_poly_degree": 2,
+      "height_ionosphere": null,
+      "coherence_threshold_split_spectrum": 0.3
     },
     "ReferenceUpdate": {
       "posting": { "azimuth_time": 2, "slant_range_time": 8 },
@@ -211,28 +213,13 @@
       "max_past_stable_history": 10
     },
     "Geocoding": {
-      "coregistration": true,
-      "gamma_flattening": true,
-      "include_phase": false,
-      "chunksizes": {
-        "acquisition_id": 1,
-        "polarization": 1
-      },
       "spacing": {
-        "x": 20,
-        "y": 40
-      }
-    },
-    "Mosaicking": {
-      "interpolation": {
-        "method": "cubic",
-        "border_pixel": 4,
-        "threshold": 1e-5
+        "x": 50,
+        "y": 50
       },
-      "gaussian_blur": {
-        "size": 5,
-        "sigma": 0.5
-      }
+      "warp_ov_fact": 100000,
+      "warp_kernel_shape": [11, 11],
+      "warp_kaiser_beta": 6
     }
   },
   "SM": {
@@ -311,15 +298,24 @@
       "initialize_current_reference": false,
       "do_image_matching": true,
       "do_split_spectrum": true,
-      "degree": 2,
-      "cohe_th": 0.3,
-      "norm": 1,
+      "coherence_threshold_image_matching": 0.3,
+      "image_matching_degree": 2,
       "matching_kernel_shape": [15, 15],
       "wsize": [256, 256],
       "wstep": [256, 256],
       "wsearch": [5, 5],
       "dim": [1, 1],
-      "block_size": 10
+      "block_size": 10,
+      "bandwidth": 7e6,
+      "frequency_offset": 4.5e6,
+      "multilook_split_spectrum": {
+        "azimuth_time": 64,
+        "slant_range_time": 32
+      },
+      "esd_poly_degree": 2,
+      "split_spectrum_poly_degree": 2,
+      "height_ionosphere": null,
+      "coherence_threshold_split_spectrum": 0.3
     },
     "ReferenceUpdate": {
       "posting": { "azimuth_time": 2, "slant_range_time": 8 },
@@ -329,28 +325,13 @@
       "max_past_stable_history": 10
     },
     "Geocoding": {
-      "coregistration": true,
-      "gamma_flattening": true,
-      "include_phase": false,
-      "chunksizes": {
-        "acquisition_id": 1,
-        "polarization": 1
-      },
       "spacing": {
-        "x": 5,
-        "y": 5
-      }
-    },
-    "Mosaicking": {
-      "interpolation": {
-        "method": "cubic",
-        "border_pixel": 4,
-        "threshold": 1e-5
+        "x": 50,
+        "y": 50
       },
-      "gaussian_blur": {
-        "size": 5,
-        "sigma": 0.5
-      }
+      "warp_ov_fact": 100000,
+      "warp_kernel_shape": [11, 11],
+      "warp_kaiser_beta": 6
     }
   }
 }

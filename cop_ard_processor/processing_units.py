@@ -1,8 +1,6 @@
-import re
 from cop_ard_app.io import Path
 import json
 import os
-from typing import Union, Any
 
 import xarray as xr
 from cop_ard_app.area_projection import stack_geometry, stack_mask
@@ -12,7 +10,8 @@ from cop_ard_app.dem import import_dem, stack_dem
 from cop_ard_app.etad import import_ETAD
 from cop_ard_app.gmlp import stack_gmlp
 from cop_ard_app.matching import estimate_poly_matching, stack_disparity
-from cop_ard_app.model import extract_acquisition_dates, extract_orbits
+from cop_ard_app.model import extract_acquisition_dates, extract_orbits, update_coreg, update_gmlp
+from cop_ard_app.split_spectrum import split_spectrum
 from cop_ard_app.orbit import import_ORBIT
 from cop_ard_app.simulation import stack_simulation, stack_simulation_ml
 from cop_ard_app.slc import finalize_import, import_slc_stack
@@ -45,6 +44,7 @@ class Ingestion(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         return ["REFERENCE_DB"]
 
+    @log_time("Ingestion Unit", logger)
     @resumable_breakpoint(identifier="Ingestion")
     def run(self, inputs, adfs=None, **kwargs):
         input_slcs_files = kwargs.get("input_slcs_files")
@@ -175,6 +175,7 @@ class ReferenceDEM(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         return ["REFERENCE_DB", "DEM"]
 
+    @log_time("ReferenceDEM Unit", logger)
     @resumable_breakpoint(identifier="ReferenceDEM")
     def run(self, inputs, adfs=None, **kwargs):
         # 1. Extract base inputs and load the configuration
@@ -187,6 +188,7 @@ class ReferenceDEM(EOProcessingUnit):
 
         # 2. Extract parameters from kwargs using the config as an explicit fallback
         recompute = kwargs.get("recompute", config["Global"]["recompute"])
+        reference_id = params["reference_id"]
 
         chunks_geo_grid = kwargs.get("chunks_geo_grid", config["Global"]["chunks_geo_grid"])
         # Filter chunks to keep only spatial dimensions
@@ -238,6 +240,7 @@ class ReferenceDEM(EOProcessingUnit):
             storage_options=storage_options_dynamic,
             storage_options_static=storage_options_static,
             recompute=recompute,
+            reference_id=reference_id,
         )
 
         output = {"DEM": dem_tree, "params": params}
@@ -253,6 +256,7 @@ class ReferenceGeometry(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         return ["REFERENCE_DB"]
 
+    @log_time("ReferenceGeometry Unit", logger)
     @resumable_breakpoint(identifier="ReferenceGeometry")
     def run(self, inputs, adfs=None, **kwargs):
         """
@@ -335,6 +339,7 @@ class ReferenceGeometry(EOProcessingUnit):
             master_image=True,
             recompute=recompute,
             enable_dask=enable_dask,
+            reference_id=reference_id,
         )
 
         simulation_ml_tree = stack_simulation_ml(
@@ -385,6 +390,7 @@ class Coregistration(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         return ["REFERENCE_DB"]
 
+    @log_time("Coregistration Unit", logger)
     @resumable_breakpoint(identifier="Coregistration")
     def run(self, inputs, adfs=None, **kwargs):
         """
@@ -431,17 +437,33 @@ class Coregistration(EOProcessingUnit):
         ov_fact_high_acc = kwargs.get("warp_ov_fact_high_acc", config["Coregistration"]["warp_ov_fact"])
         kernel_shape_high_acc = kwargs.get("warp_kernel_shape_high_acc", config["Coregistration"]["warp_kernel_shape"])
         kaiser_beta_high_acc = kwargs.get("warp_kaiser_beta_high_acc", config["Coregistration"]["warp_kaiser_beta"])
-        degree = kwargs.get("degree", config["Coregistration"]["degree"])
-        cohe_th = kwargs.get("cohe_th", config["Coregistration"]["cohe_th"])
-        norm = kwargs.get("norm", config["Coregistration"]["norm"])
+        image_matching_degree = kwargs.get("image_matching_degree", config["Coregistration"]["image_matching_degree"])
+        coherence_threshold_image_matching = kwargs.get(
+            "coherence_threshold_image_matching", config["Coregistration"]["coherence_threshold_image_matching"]
+        )
+        coherence_threshold_split_spectrum = kwargs.get(
+            "coherence_threshold_split_spectrum", config["Coregistration"]["coherence_threshold_split_spectrum"]
+        )
         matching_kernel_shape = kwargs.get("matching_kernel_shape", config["Coregistration"]["matching_kernel_shape"])
         wsize = kwargs.get("wsize", config["Coregistration"]["wsize"])
         wstep = kwargs.get("wstep", config["Coregistration"]["wstep"])
         wsearch = kwargs.get("wsearch", config["Coregistration"]["wsearch"])
         dim = kwargs.get("dim", config["Coregistration"]["dim"])
         block_size = kwargs.get("block_size", config["Coregistration"]["block_size"])
-
+        bandwidth = kwargs.get("bandwidth", config["Coregistration"]["bandwidth"])
+        frequency_offset = kwargs.get("frequency_offset", config["Coregistration"]["frequency_offset"])
+        multilook_split_spectrum = kwargs.get(
+            "multilook_split_spectrum", config["Coregistration"]["multilook_split_spectrum"]
+        )
+        esd_poly_degree = kwargs.get("esd_poly_degree", config["Coregistration"]["esd_poly_degree"])
+        split_spectrum_poly_degree = kwargs.get(
+            "split_spectrum_poly_degree", config["Coregistration"]["split_spectrum_poly_degree"]
+        )
+        h_iono = kwargs.get("height_ionosphere", config["Coregistration"]["height_ionosphere"])
         reference_id = params["reference_id"]
+
+        logger.debug(f"frequency offset: {frequency_offset}")
+        logger.debug(f"bandwidth: {bandwidth}")
 
         # 5. Setup directories
         working_directory_reference_db_static, working_directory_reference_db_dynamic, storage_options_static = (
@@ -491,6 +513,7 @@ class Coregistration(EOProcessingUnit):
                 master_image=False,
                 recompute=recompute,
                 enable_dask=enable_dask,
+                reference_id=reference_id,
             )
 
         # 8. Execute Coregistration stack
@@ -516,15 +539,15 @@ class Coregistration(EOProcessingUnit):
         logger.debug(f"image_matching: {do_image_matching}")
         logger.debug(f"split spectrum : {do_split_spectrum}")
 
-        slcs = finalize_coreg(
-            slcs=slcs,
-            working_directory=working_directory_reference_db_dynamic,
-            reference_id=reference_id,
-            do_image_matching=do_image_matching,
-            do_split_spectrum=do_split_spectrum,
-        )
         # 9. Image matching refinement block
         if do_image_matching:
+            slcs = finalize_coreg(
+                slcs=slcs,
+                working_directory=working_directory_reference_db_dynamic,
+                reference_id=reference_id,
+                do_image_matching=do_image_matching,
+                do_split_spectrum=do_split_spectrum,
+            )
             disparity_map = stack_disparity(
                 slcs=slcs,
                 reference_id=reference_id,
@@ -540,10 +563,9 @@ class Coregistration(EOProcessingUnit):
             x_poly, y_poly = estimate_poly_matching(
                 slcs=slcs,
                 disparity_map=disparity_map,
-                degree=degree,
-                cohe_th=cohe_th,
-                norm=norm,
-                kernel_shape=matching_kernel_shape,  # Uso il nome specifico per evitare conflitti
+                degree=image_matching_degree,
+                cohe_th=coherence_threshold_image_matching,
+                kernel_shape=matching_kernel_shape,
                 enable_dask=enable_dask,
             )
             logger.debug(f"x_poly: {x_poly}")
@@ -575,9 +597,36 @@ class Coregistration(EOProcessingUnit):
             )
 
         if do_split_spectrum:
-            pass  # TODO: Aggiungi logica per split spectrum
+            slcs = finalize_coreg(
+                slcs=slcs,
+                working_directory=working_directory_reference_db_dynamic,
+                reference_id=reference_id,
+                do_image_matching=do_image_matching,
+                do_split_spectrum=do_split_spectrum,
+            )
 
-        cslcs = slcs
+            slcs = split_spectrum(
+                slcs,
+                multilook=multilook_split_spectrum,
+                frequency_offset=frequency_offset,
+                bandwidth=bandwidth,
+                cohe_th=coherence_threshold_split_spectrum,
+                h_iono=h_iono,
+                wdir_path=f"{working_directory_dynamic}/split_spectrum",
+                esd_poly_degree=esd_poly_degree,
+                split_spectrum_poly_degree=split_spectrum_poly_degree,
+                enable_dask=enable_dask,
+                multiburst=multiburst,
+                reference_id=reference_id,
+            )
+
+        cslcs, slcs = update_coreg(
+            slcs,
+            wdir_path_static=working_directory_reference_db_static,
+            reference_id=reference_id,
+            external_metadata=params,
+            storage_options=storage_options_static,
+        )
         return {"cslcs": cslcs, "slcs": slcs}
 
 
@@ -590,6 +639,7 @@ class ReferenceUpdate(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         return ["REFERENCE_DB"]
 
+    @log_time("ReferenceUpdate Unit", logger)
     @resumable_breakpoint(identifier="ReferenceUpdate")
     def run(self, inputs, adfs=None, **kwargs):
         # 1. Extract base inputs
@@ -606,6 +656,7 @@ class ReferenceUpdate(EOProcessingUnit):
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
         # 4. Extract parameters from kwargs with explicit config fallbacks
+        reference_id = params["reference_id"]
         posting = kwargs.get("posting", config["ReferenceUpdate"]["posting"])
         memory_param = kwargs.get("memory_param", config["ReferenceUpdate"]["memory_param"])
         coherence_threshold = kwargs.get("coherence_threshold", config["ReferenceUpdate"]["coherence_threshold"])
@@ -634,6 +685,7 @@ class ReferenceUpdate(EOProcessingUnit):
             coherence_threshold=coherence_threshold,
             max_past_stable_history=max_past_stable_history,
             save_metrics=False,
+            reference_id=reference_id,
         )
 
         logger.debug(f"stable_reference : {stable_references}")
@@ -642,10 +694,110 @@ class ReferenceUpdate(EOProcessingUnit):
         # TODO: write script to do this externally.
         from cop_ard_app.utils import update_reference_database
 
-        # logger.debug("DISABLED SAVING CURRENT REFERENCE")
-        update_reference_database(current_reference, stable_references, working_directory_reference_db_dynamic)
+        logger.debug("SAVING CURRENT REFERENCE")
+        update_reference_database(
+            current_reference,
+            stable_references,
+            working_directory_reference_db_dynamic,
+            reference_id=reference_id,
+        )
 
         return {
+            "current_reference": current_reference,
+            "stable_references": stable_references,
+        }
+
+
+class CMLP(EOProcessingUnit):
+    @classmethod
+    def get_mandatory_input_list(cls, mode=None, **kwargs):
+        return ["slcs", "params"]
+
+    @classmethod
+    def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        return ["REFERENCE_DB"]
+
+    @log_time("CMLP Unit", logger)
+    @resumable_breakpoint(identifier="CMLP")
+    def run(self, inputs, adfs=None, **kwargs):
+        # 1. Extract base inputs
+        slcs = inputs["slcs"]
+        params = inputs["params"]
+
+        # 2. Load configuration based on the instrument mode
+        config = get_config(params["mode"])
+
+        # 3. Setup directories
+        working_directory_reference_db_static, working_directory_reference_db_dynamic, storage_options_static = (
+            get_wdir_static(adfs)
+        )
+        working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
+
+        # 4. Extract parameters from kwargs with explicit config fallbacks
+        reference_id = params["reference_id"]
+        posting = kwargs.get("posting", config["ReferenceUpdate"]["posting"])
+        memory_param = kwargs.get("memory_param", config["ReferenceUpdate"]["memory_param"])
+        coherence_threshold = kwargs.get("coherence_threshold", config["ReferenceUpdate"]["coherence_threshold"])
+        stable_interval_days = kwargs.get("stable_interval_days", config["ReferenceUpdate"]["stable_interval_days"])
+        max_past_stable_history = kwargs.get(
+            "max_past_stable_history", config["ReferenceUpdate"]["max_past_stable_history"]
+        )
+
+        names_params = [
+            "atbd_link",
+            "facility",
+            "product_data_access",
+            "product_pixel_coordinate_convention",
+            "product_family_specification",
+            "gmlp_status",
+            "providers",
+            "eastern_geometric_accuracy",
+            "northern_geometric_accuracy",
+            "geometric_accuracy_radial_rmse",
+            "product_filtering",
+        ]
+        for name in names_params:
+            params[name] = kwargs.get(name, config["Global"][name])
+
+        enable_dask = kwargs.get("enable_dask", True)
+
+        # 5. Execute CMLP stack
+        cmlp_tree, current_reference, stable_references = stack_cmlp(
+            slcs=slcs,
+            posting=posting,
+            working_directory=Path(
+                working_directory_dynamic,
+                storage_options=storage_options_dynamic,
+            ),
+            stable_interval_days=stable_interval_days,
+            reference_database_path=Path(
+                working_directory_reference_db_dynamic,
+                storage_options=storage_options_static,
+            ),
+            enable_dask=enable_dask,
+            memory_param=memory_param,
+            coherence_threshold=coherence_threshold,
+            max_past_stable_history=max_past_stable_history,
+            save_metrics=True,
+            reference_id=reference_id,
+        )
+
+        logger.debug(f"stable_reference : {stable_references}")
+
+        # 6. Update Reference Database
+        # TODO: write script to do this externally.
+        from cop_ard_app.utils import update_reference_database
+
+        logger.debug("SAVING CURRENT REFERENCE")
+        update_reference_database(
+            current_reference,
+            stable_references,
+            working_directory_reference_db_dynamic,
+            reference_id=reference_id,
+        )
+
+        return {
+            "cmlp": cmlp_tree,
             "current_reference": current_reference,
             "stable_references": stable_references,
         }
@@ -654,30 +806,50 @@ class ReferenceUpdate(EOProcessingUnit):
 class Geocoding(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["cmlp", "simulation", "simulation_ml"]
+        return ["cmlp", "slcs", "simulation_ref", "simulation_ml", "params"]
 
+    @classmethod
+    def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        return ["REFERENCE_DB"]
+
+    @log_time("Geocoding Unit", logger)
     @resumable_breakpoint(identifier="Geocoding")
-    def run(
-        self,
-        inputs,
-        adfs,
-        mode,
-        workdir_path_static,
-        workdir_path_dynamic,
-        spacing,
-        enable_dask,
-        **kwargs,
-    ):
+    def run(self, inputs, adfs, **kwargs):
         cmlp = inputs["cmlp"]
-        simulation = inputs["simulation"]
-        simulation_ml = inputs["simulation_ml"]
+        slcs = inputs["slcs"]
+        simulation_tree = inputs["simulation_ref"]
+        simulation_ml_tree = inputs["simulation_ml"]
+        params = inputs["params"]
+
+        config = get_config(params["mode"])
+        reference_id = params["reference_id"]
+
+        # 3. Setup directories
+        working_directory_reference_db_static, _, storage_options_static = get_wdir_static(adfs)
+        working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
+
+        ov_fact = kwargs.get("warp_ov_fact", config["Geocoding"]["warp_ov_fact"])
+        kernel_shape = kwargs.get("warp_kernel_shape", config["Geocoding"]["warp_kernel_shape"])
+        kaiser_beta = kwargs.get("warp_kaiser_beta", config["Geocoding"]["warp_kaiser_beta"])
+        spacing = kwargs.get("spacing", config["Geocoding"]["spacing"])
+        chunks_geo_grid = kwargs.get("chunks_geo_grid", config["Global"]["chunks_geo_grid"])
+        enable_dask = kwargs.get("enable_dask", True)
 
         gmlp = stack_gmlp(
             cmlp_tree=cmlp,
-            simulation_tree=simulation,
-            simulation_ml_tree=simulation_ml,
+            slcs=slcs,
+            simulation_tree=simulation_tree,
+            simulation_ml_tree=simulation_ml_tree,
             spacing=spacing,
-            working_directory_tmp=workdir_path_dynamic,
+            reference_id=reference_id,
+            working_directory_static=working_directory_reference_db_static,
+            working_directory_tmp=working_directory_dynamic,
             enable_dask=enable_dask,
+            warp_ov_fact=ov_fact,
+            warp_kernel_shape=kernel_shape,
+            warp_kaiser_beta=kaiser_beta,
+            chunks=chunks_geo_grid,
         )
-        return {"gmlp": gmlp}
+
+        gmlp_update = update_gmlp(gmlp, slcs, params)
+        return {"gmlp": gmlp_update}
