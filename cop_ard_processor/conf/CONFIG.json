@@ -47,7 +47,7 @@
       "recompute": false,
       "reference_date": null
     },
-    "Calibration": {
+    "Ingestion": {
       "polarization": null,
       "indices": null,
       "deramp": true,
@@ -65,9 +65,12 @@
     "Coregistration": {
       "do_flattening": true,
       "do_reramp": true,
-      "warp_ov_fact": 100000,
-      "warp_kernel_shape": [11, 11],
-      "warp_kaiser_beta": 6,
+      "warp_ov_fact_low_acc": 10000,
+      "warp_kernel_shape_low_acc": [11, 11],
+      "warp_kaiser_beta_low_acc": 6,
+      "warp_ov_fact_high_acc": 100000,
+      "warp_kernel_shape_high_acc": [11, 11],
+      "warp_kaiser_beta_high_acc": 6,
       "initialize_current_reference": false,
       "do_image_matching": true,
       "do_split_spectrum": true,
@@ -156,7 +159,7 @@
       "recompute": false,
       "reference_date": null
     },
-    "Calibration": {
+    "Ingestion": {
       "polarization": null,
       "indices": null,
       "deramp": true,
@@ -174,9 +177,12 @@
     "Coregistration": {
       "do_flattening": true,
       "do_reramp": true,
-      "warp_ov_fact": 100000,
-      "warp_kernel_shape": [11, 11],
-      "warp_kaiser_beta": 6,
+      "warp_ov_fact_low_acc": 10000,
+      "warp_kernel_shape_low_acc": [11, 11],
+      "warp_kaiser_beta_low_acc": 6,
+      "warp_ov_fact_high_acc": 100000,
+      "warp_kernel_shape_high_acc": [11, 11],
+      "warp_kaiser_beta_high_acc": 6,
       "initialize_current_reference": false,
       "do_image_matching": true,
       "do_split_spectrum": true,
@@ -265,7 +271,7 @@
       "recompute": false,
       "reference_date": null
     },
-    "Calibration": {
+    "Ingestion": {
       "polarization": null,
       "indices": null,
       "deramp": true,
@@ -283,9 +289,12 @@
     "Coregistration": {
       "do_flattening": true,
       "do_reramp": true,
-      "warp_ov_fact": 100000,
-      "warp_kernel_shape": [11, 11],
-      "warp_kaiser_beta": 6,
+      "warp_ov_fact_low_acc": 10000,
+      "warp_kernel_shape_low_acc": [11, 11],
+      "warp_kaiser_beta_low_acc": 6,
+      "warp_ov_fact_high_acc": 100000,
+      "warp_kernel_shape_high_acc": [11, 11],
+      "warp_kaiser_beta_high_acc": 6,
       "initialize_current_reference": false,
       "do_image_matching": true,
       "do_split_spectrum": true,

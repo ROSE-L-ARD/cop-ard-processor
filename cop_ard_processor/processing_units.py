@@ -39,13 +39,13 @@ def _is_multiburst(slcs: xr.DataTree):
     return "bursts" in slcs
 
 
-class Calibration(EOProcessingUnit):
+class Ingestion(EOProcessingUnit):
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         return ["REFERENCE_DB"]
 
-    @log_time("Calibration Unit", logger)
-    @resumable_breakpoint(identifier="Calibration")
+    @log_time("Ingestion Unit", logger)
+    @resumable_breakpoint(identifier="Ingestion")
     def run(self, inputs, adfs=None, **kwargs):
         input_slcs_files = kwargs.get("input_slcs_files")
         if input_slcs_files is None:
@@ -59,12 +59,12 @@ class Calibration(EOProcessingUnit):
         recompute = kwargs.get("recompute", config["Global"]["recompute"])
         chunks = kwargs.get("chunks", config["Global"]["chunks_radar_grid"])
 
-        calibration_type = kwargs.get("calibration_type", config["Calibration"]["calibration_type"])
-        indices = kwargs.get("indices", config["Calibration"]["indices"])
-        polarization = kwargs.get("polarization", config["Calibration"]["polarization"])
-        deramp = kwargs.get("deramp", config["Calibration"]["deramp"])
-        noise_removal = kwargs.get("noise_removal", config["Calibration"]["noise_removal"])
-        apply_invalid_mask = kwargs.get("apply_invalid_mask", config["Calibration"]["apply_invalid_mask"])
+        calibration_type = kwargs.get("calibration_type", config["Ingestion"]["calibration_type"])
+        indices = kwargs.get("indices", config["Ingestion"]["indices"])
+        polarization = kwargs.get("polarization", config["Ingestion"]["polarization"])
+        deramp = kwargs.get("deramp", config["Ingestion"]["deramp"])
+        noise_removal = kwargs.get("noise_removal", config["Ingestion"]["noise_removal"])
+        apply_invalid_mask = kwargs.get("apply_invalid_mask", config["Ingestion"]["apply_invalid_mask"])
 
         reference_id = kwargs.get("reference_id")
         params = {
@@ -431,9 +431,12 @@ class Coregistration(EOProcessingUnit):
         # 4. Extract coregistration specific parameters
         do_flattening = kwargs.get("do_flattening", config["Coregistration"]["do_flattening"])
         do_reramp = kwargs.get("do_reramp", config["Coregistration"]["do_reramp"])
-        ov_fact = kwargs.get("warp_ov_fact", config["Coregistration"]["warp_ov_fact"])
-        kernel_shape = kwargs.get("warp_kernel_shape", config["Coregistration"]["warp_kernel_shape"])
-        kaiser_beta = kwargs.get("warp_kaiser_beta", config["Coregistration"]["warp_kaiser_beta"])
+        ov_fact_low_acc = kwargs.get("warp_ov_fact_low_acc", config["Coregistration"]["warp_ov_fact"])
+        kernel_shape_low_acc = kwargs.get("warp_kernel_shape_low_acc", config["Coregistration"]["warp_kernel_shape"])
+        kaiser_beta_low_acc = kwargs.get("warp_kaiser_beta_low_acc", config["Coregistration"]["warp_kaiser_beta"])
+        ov_fact_high_acc = kwargs.get("warp_ov_fact_high_acc", config["Coregistration"]["warp_ov_fact"])
+        kernel_shape_high_acc = kwargs.get("warp_kernel_shape_high_acc", config["Coregistration"]["warp_kernel_shape"])
+        kaiser_beta_high_acc = kwargs.get("warp_kaiser_beta_high_acc", config["Coregistration"]["warp_kaiser_beta"])
         image_matching_degree = kwargs.get("image_matching_degree", config["Coregistration"]["image_matching_degree"])
         coherence_threshold_image_matching = kwargs.get(
             "coherence_threshold_image_matching", config["Coregistration"]["coherence_threshold_image_matching"]
@@ -469,9 +472,12 @@ class Coregistration(EOProcessingUnit):
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
         # 6. Populate parameters dictionary for metadata/logging
-        params["ov_fact"] = ov_fact
-        params["kernel_shape"] = kernel_shape
-        params["kaiser_beta"] = kaiser_beta
+        params["ov_fact_low_acc"] = ov_fact_low_acc
+        params["kernel_shape_low_acc"] = kernel_shape_low_acc
+        params["kaiser_beta_low_acc"] = kaiser_beta_low_acc
+        params["ov_fact_high_acc"] = ov_fact_high_acc
+        params["kernel_shape_high_acc"] = kernel_shape_high_acc
+        params["kaiser_beta_high_acc"] = kaiser_beta_high_acc
 
         metadata_keys = [
             "atbd_link",
@@ -519,9 +525,9 @@ class Coregistration(EOProcessingUnit):
             reference_id=reference_id,
             multiburst=multiburst,
             working_directory=working_directory_dynamic,
-            warp_ov_fact=ov_fact,
-            warp_kernel_shape=kernel_shape,
-            warp_kaiser_beta=kaiser_beta,
+            warp_ov_fact=ov_fact_low_acc,
+            warp_kernel_shape=kernel_shape_low_acc,
+            warp_kaiser_beta=kaiser_beta_low_acc,
             storage_options=storage_options_dynamic,
             do_reramp=do_reramp,
             do_flattening=do_flattening,
@@ -578,9 +584,9 @@ class Coregistration(EOProcessingUnit):
                 simulation_secondary_tree=simulation_secondary_tree,
                 multiburst=multiburst,
                 working_directory=f"{working_directory_dynamic}/image_matching",
-                warp_ov_fact=ov_fact,
-                warp_kernel_shape=kernel_shape,
-                warp_kaiser_beta=kaiser_beta,
+                warp_ov_fact=ov_fact_high_acc,
+                warp_kernel_shape=kernel_shape_high_acc,
+                warp_kaiser_beta=kaiser_beta_high_acc,
                 storage_options=storage_options_dynamic,
                 do_reramp=do_reramp,
                 do_flattening=do_flattening,
