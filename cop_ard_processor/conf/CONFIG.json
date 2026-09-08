@@ -48,7 +48,7 @@
       "recompute": false,
       "reference_date": null
     },
-    "Calibration": {
+    "Ingestion": {
       "polarization": null,
       "indices": null,
       "deramp": true,
@@ -163,7 +163,7 @@
       "recompute": false,
       "reference_date": null
     },
-    "Calibration": {
+    "Ingestion": {
       "polarization": null,
       "indices": null,
       "deramp": true,
@@ -278,7 +278,7 @@
       "recompute": false,
       "reference_date": null
     },
-    "Calibration": {
+    "Ingestion": {
       "polarization": null,
       "indices": null,
       "deramp": true,
