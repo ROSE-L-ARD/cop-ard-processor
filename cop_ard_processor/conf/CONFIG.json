@@ -8,8 +8,7 @@
       "product_data_access": "https://link_product",
       "product_pixel_coordinate_convention": "pixel-center",
       "cslc_status": "nominal",
-      "gslc_status": "nominal",
-      "nrb_status": "nominal",
+      "gmlp_status": "nominal",
       "product_filtering": "TBD",
       "eastern_geometric_accuracy": {
         "bias": 0,
@@ -28,7 +27,7 @@
           "roles": ["producer"]
         },
         {
-          "name": "Sentinel-1 ARD Core",
+          "name": "COP ARD Processor",
           "description": "Analysis Ready Data Processor",
           "roles": ["processor"]
         }

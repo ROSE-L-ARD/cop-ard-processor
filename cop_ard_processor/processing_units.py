@@ -10,7 +10,7 @@ from cop_ard_app.dem import import_dem, stack_dem
 from cop_ard_app.etad import import_ETAD
 from cop_ard_app.gmlp import stack_gmlp
 from cop_ard_app.matching import estimate_poly_matching, stack_disparity
-from cop_ard_app.model import extract_acquisition_dates, extract_orbits, update_coreg
+from cop_ard_app.model import extract_acquisition_dates, extract_orbits, update_coreg, update_gmlp
 from cop_ard_app.split_spectrum import split_spectrum
 from cop_ard_app.orbit import import_ORBIT
 from cop_ard_app.simulation import stack_simulation, stack_simulation_ml
@@ -737,6 +737,22 @@ class CMLP(EOProcessingUnit):
             "max_past_stable_history", config["ReferenceUpdate"]["max_past_stable_history"]
         )
 
+        names_params = [
+            "atbd_link",
+            "facility",
+            "product_data_access",
+            "product_pixel_coordinate_convention",
+            "product_family_specification",
+            "gmlp_status",
+            "providers",
+            "eastern_geometric_accuracy",
+            "northern_geometric_accuracy",
+            "geometric_accuracy_radial_rmse",
+            "product_filtering",
+        ]
+        for name in names_params:
+            params[name] = kwargs.get(name, config["Global"][name])
+
         enable_dask = kwargs.get("enable_dask", True)
 
         # 5. Execute CMLP stack
@@ -766,13 +782,13 @@ class CMLP(EOProcessingUnit):
         # TODO: write script to do this externally.
         from cop_ard_app.utils import update_reference_database
 
-        logger.debug("NOT SAVING CURRENT REFERENCE")
-        # update_reference_database(
-        #     current_reference,
-        #     stable_references,
-        #     working_directory_reference_db_dynamic,
-        #     reference_id=reference_id,
-        # )
+        logger.debug("SAVING CURRENT REFERENCE")
+        update_reference_database(
+            current_reference,
+            stable_references,
+            working_directory_reference_db_dynamic,
+            reference_id=reference_id,
+        )
 
         return {
             "cmlp": cmlp_tree,
@@ -784,19 +800,26 @@ class CMLP(EOProcessingUnit):
 class Geocoding(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["cmlp", "simulation_ref", "simulation_ml", "params"]
+        return ["cmlp", "slcs", "simulation_ref", "simulation_ml", "params"]
+
+    @classmethod
+    def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        return ["REFERENCE_DB"]
 
     @log_time("Geocoding Unit", logger)
     @resumable_breakpoint(identifier="Geocoding")
     def run(self, inputs, adfs, **kwargs):
         cmlp = inputs["cmlp"]
+        slcs = inputs["slcs"]
         simulation_tree = inputs["simulation_ref"]
         simulation_ml_tree = inputs["simulation_ml"]
         params = inputs["params"]
 
         config = get_config(params["mode"])
+        reference_id = params["reference_id"]
 
         # 3. Setup directories
+        working_directory_reference_db_static, _, storage_options_static = get_wdir_static(adfs)
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
         ov_fact = kwargs.get("warp_ov_fact", config["Geocoding"]["warp_ov_fact"])
@@ -808,9 +831,12 @@ class Geocoding(EOProcessingUnit):
 
         gmlp = stack_gmlp(
             cmlp_tree=cmlp,
+            slcs=slcs,
             simulation_tree=simulation_tree,
             simulation_ml_tree=simulation_ml_tree,
             spacing=spacing,
+            reference_id=reference_id,
+            working_directory_static=working_directory_reference_db_static,
             working_directory_tmp=working_directory_dynamic,
             enable_dask=enable_dask,
             warp_ov_fact=ov_fact,
@@ -818,4 +844,6 @@ class Geocoding(EOProcessingUnit):
             warp_kaiser_beta=kaiser_beta,
             chunks=chunks_geo_grid,
         )
-        return {"gmlp": gmlp}
+
+        gmlp_update = update_gmlp(gmlp, slcs, params)
+        return {"gmlp": gmlp_update}
