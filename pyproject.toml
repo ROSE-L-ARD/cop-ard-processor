@@ -40,18 +40,18 @@ requires-python = ">=3.13, <3.14"
 # Users are encouraged to fix the EOPF CPM version to make sure to
 # have a stable build environment.
 dependencies = [
-    "cop-ard-app @ git+ssh://git@github.com/bopen/cop-ard-app.git",  # TODO pin
-    "eopf==3.0.0",
+    "cop-ard-app",  # TODO pin
+    "eopf>=3.0.0",
 ]
 
 [project.optional-dependencies]
-cluster-plugin = ["eopf[cluster-plugin] >= 3.0.0rc4"]
-tests = ["eopf[tests] >= 3.0.0rc4"]
-linter = ["eopf[linter] >= 3.0.0rc4"]
-typing = ["eopf[typing] >= 3.0.0rc4"]
-formatter = ["eopf[formatter] >= 3.0.0rc4"]
-security = ["eopf[security] >= 3.0.0rc4"]
-notebook = ["eopf[notebook] >= 3.0.0rc4"]
+cluster-plugin = ["eopf[cluster-plugin] >= 3.0.0"]
+tests = ["eopf[tests] >= 3.0.0"]
+linter = ["eopf[linter] >= 3.0.0"]
+typing = ["eopf[typing] >= 3.0.0"]
+formatter = ["eopf[formatter] >= 3.0.0"]
+security = ["eopf[security] >= 3.0.0"]
+notebook = ["eopf[notebook] >= 3.0.0"]
 doc = [
     "eopf[doc]",
     "sphinxcontrib-mermaid",
@@ -59,8 +59,8 @@ doc = [
     "sphinxcontrib-spelling",
     "sphinx-test-reports",
 ]
-complexity = ["eopf[complexity] >= 3.0.0rc4"]
-doc-cov = ["eopf[doc-cov] >= 3.0.0rc4"]
+complexity = ["eopf[complexity] >= 3.0.0"]
+doc-cov = ["eopf[doc-cov] >= 3.0.0"]
 dev = ["ipykernel","matplotlib"]
 
 [tool.ruff]
@@ -72,3 +72,6 @@ target-version = "py313"
 markers = ["integration", "unit", "need_files"]
 [[tool.uv.index]]
 url = "https://pypi.org/simple"
+
+[tool.uv.sources]
+cop-ard-app = { git = "git+ssh://git@github.com/bopen/cop-ard-app.git" }
