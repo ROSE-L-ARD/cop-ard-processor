@@ -1,0 +1,264 @@
+groups:
+  measurements:
+    coords:
+      x:
+        dimensions:
+          x: {}
+      y:
+        dimensions:
+          y: {}
+      polarization:
+        dimensions:
+          polarization: {}
+      spatial_ref: {}
+      acquisition_date:
+        dimensions:
+          acquisition_id: {}
+      acquisition_id:
+        dimensions:
+          acquisition_id: {}
+    data_variables:
+      phase:
+        dimensions:
+          polarization: {}
+          acquisition_id: {}
+          y: {}
+          x: {}
+      phase_model:
+        dimensions:
+          acquisition_id: {}
+          y: {}
+          x: {}
+      phase_iono:
+        optional: true
+        dimensions:
+          acquisition_id: {}
+          y: {}
+          x: {}
+      
+
+  quality:
+    groups:
+      coherence:
+        coords:
+          x:
+            dimensions:
+              x: {}
+          y:
+            dimensions:
+              y: {}
+          polarization:
+            dimensions:
+              polarization: {}
+          spatial_ref: {}
+          acquisition_date:
+            dimensions:
+              acquisition_id: {}
+          acquisition_id:
+            dimensions:
+              acquisition_id: {}
+        data_variables:
+          short_term_coh:
+            dimensions:
+              polarization: {}
+              acquisition_id: {}
+              y: {}
+              x: {}
+
+      distortion_mask:
+        coords:
+          x:
+            dimensions:
+              x: {}
+          y:
+            dimensions:
+              y: {}
+          spatial_ref: {}
+        data_variables:
+          distortion_mask:
+            dimensions:
+              y: {}
+              x: {}
+
+  conditions:
+    groups:
+      ETAD:
+        optional: true
+        coords:
+          x:
+            dimensions:
+              x: {}
+          y:
+            dimensions:
+              y: {}
+          spatial_ref: {}
+          acquisition_date:
+            dimensions:
+              acquisition_id: {}
+          acquisition_id:
+            dimensions:
+              acquisition_id: {}
+        data_variables:
+          azcorr:
+            dimensions:
+              acquisition_id: {}
+              y: {}
+              x: {}
+          lowrescorr:
+            dimensions:
+              acquisition_id: {}
+              y: {}
+              x: {}
+          rgcorr:
+            dimensions:
+              acquisition_id: {}
+              y: {}
+              x: {}
+          tropocorr:
+            dimensions:
+              acquisition_id: {}
+              y: {}
+              x: {}
+
+      look_vector:
+        coords:
+          x:
+            dimensions:
+              x: {}
+          y:
+            dimensions:
+              y: {}
+          axis:
+            dimensions:
+              axis: {}
+          spatial_ref: {}
+        data_variables:
+          look_vector:
+            dimensions:
+              axis: {}
+              y: {}
+              x: {}
+
+      orbit:
+        coords:
+          degree:
+            dimensions:
+              degree: {}
+          axis:
+            dimensions:
+              axis: {}
+          acquisition_date:
+            dimensions:
+              acquisition_id: {}
+          acquisition_id:
+            dimensions:
+              acquisition_id: {}
+        data_variables:
+          coeffs:
+            dimensions:
+              acquisition_id: {}
+              degree: {}
+              axis: {}
+
+attributes:
+  stac_discovery:
+    type: {}
+    stac_version: {}
+    stac_extensions: {}
+    bbox: {}
+    geometry:
+      type: {}
+      coordinates: {}
+    properties:
+      title: {}
+      datetime: {}
+      start_datetime: {}
+      end_datetime: {}
+      created: {}
+      constellation: {}
+      instruments: {}
+      platform: {}
+      "eopf:datatake_id": {}
+      "eopf:instrument_mode": {}
+      "processing:lineage": {}
+      "processing:software": {}
+      "processing:version": {}
+      "processing:datetime": {}
+      "processing:facility": {}
+      "product:timeliness": {}
+      "product:timeliness_category": {}
+      "product:type": {}
+      providers: {}
+      "sar:beam_ids": {}
+      "sar:center_frequency": {}
+      "sar:frequency_band": {}
+      "sar:instrument_mode": {}
+      "sar:polarizations": {}
+      "sat:absolute_orbit": {}
+      "sat:orbit_state": {}
+      "sat:relative_orbit": {}
+      "sci:citation": {}
+      gsd: {}
+      "proj:epsg": {}
+      "proj:wkt2": {}
+      "proj:shape": {}
+      "proj:transform": {}
+    links: {}
+    assets:
+      measurements:
+        href: {}
+        title: {}
+        description: {}
+        type: {}
+        roles: {}
+      conditions:
+        href: {}
+        title: {}
+        description: {}
+        type: {}
+        roles: {}
+      quality:
+        href: {}
+        title: {}
+        description: {}
+        type: {}
+        roles: {}
+    id: {}
+
+  processing_history:
+    "COP ARD CSLC Product":
+      LIST0:
+        adfs: {}
+        inputs: {}
+        facility: {}
+        outputs: {}
+        processor: {}
+        time: {}
+        version: {}
+    "COP ARD GMLP Product":
+      LIST0:
+        adfs: {}
+        inputs: {}
+        facility: {}
+        outputs: {}
+        processor: {}
+        time: {}
+        version: {}
+
+  other_metadata:
+    product_data_access: {}
+    product_geometry: {}
+    product_pixel_coordinate_convention: {}
+    noise_correction_flag: {}
+    gmlp_status: {}
+    product_family_specification: {}
+    measurement_type: {}
+    product_resampling_method: {}
+    product_filtering: {}
+    eastern_geometric_accuracy:
+      bias: {}
+      stddev: {}
+    northern_geometric_accuracy:
+      bias: {}
+      stddev: {}
+    geometric_accuracy_radial_rmse: {}

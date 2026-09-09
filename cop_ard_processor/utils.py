@@ -109,7 +109,7 @@ def get_wdir_static(adfs: Mapping[str, ADF] | None) -> tuple[str, str, dict[str,
     ----------
     adfs : Mapping[str, Any]
         A mapping of Auxiliary Data Files (ADFs), which must contain the key
-        'REFERENCE_DB'.
+        'REFDB'.
     single_shot_run : bool
         If True, overrides the static directory and uses a dynamic one instead.
 
@@ -123,16 +123,16 @@ def get_wdir_static(adfs: Mapping[str, ADF] | None) -> tuple[str, str, dict[str,
     Raises
     ------
     KeyError
-        If 'REFERENCE_DB' is not found in the provided `adfs`.
+        If 'REFDB' is not found in the provided `adfs`.
     """
     import posixpath
 
     if adfs is None:
         raise ValueError("Expected mapping of adfs, got None")
-    if "REFERENCE_DB" not in adfs:
-        raise KeyError("The 'REFERENCE_DB' key is missing from the provided ADFs.")
+    if "REFDB" not in adfs:
+        raise KeyError("The 'REFDB' key is missing from the provided ADFs.")
 
-    path = get_adf(adfs["REFERENCE_DB"])
+    path = get_adf(adfs["REFDB"])
     working_dir, storage_options = path.path, path.storage_options
     reference_db_path_static = posixpath.join(working_dir, "reference_db_static")
     reference_db_path_dynamic = posixpath.join(working_dir, "reference_db_dynamic")

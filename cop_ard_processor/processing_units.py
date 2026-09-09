@@ -42,7 +42,7 @@ def _is_multiburst(slcs: xr.DataTree):
 class Ingestion(EOProcessingUnit):
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
-        return ["REFERENCE_DB"]
+        return ["REFDB"]
 
     @log_time("Ingestion Unit", logger)
     @resumable_breakpoint(identifier="Ingestion")
@@ -122,7 +122,7 @@ class Ingestion(EOProcessingUnit):
             for k, v in adfs.items():
                 if "ETAD" in k:
                     etad_files.append(get_adf(v))
-                if "ORBIT" in k:
+                if "ORB" in k:
                     orbit_files.append(get_adf(v))
             slcs, used_etads = import_ETAD(
                 slcs,
@@ -173,7 +173,7 @@ class ReferenceDEM(EOProcessingUnit):
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
-        return ["REFERENCE_DB", "DEM"]
+        return ["REFDB", "DEM"]
 
     @log_time("ReferenceDEM Unit", logger)
     @resumable_breakpoint(identifier="ReferenceDEM")
@@ -254,7 +254,7 @@ class ReferenceGeometry(EOProcessingUnit):
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
-        return ["REFERENCE_DB"]
+        return ["REFDB"]
 
     @log_time("ReferenceGeometry Unit", logger)
     @resumable_breakpoint(identifier="ReferenceGeometry")
@@ -278,7 +278,7 @@ class ReferenceGeometry(EOProcessingUnit):
         adfs : Mapping[str, ADF] | None, optional
             Auxiliary Data Files mapping. Expected keys:
 
-            - 'REFERENCE_DB': ADF for persistent storage.
+            - 'REFDB': ADF for persistent storage.
         **kwargs : Any
             Additional keyword arguments (e.g., recompute, chunks_geo_grid, enable_dask).
 
@@ -388,7 +388,7 @@ class Coregistration(EOProcessingUnit):
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
-        return ["REFERENCE_DB"]
+        return ["REFDB"]
 
     @log_time("Coregistration Unit", logger)
     @resumable_breakpoint(identifier="Coregistration")
@@ -431,12 +431,20 @@ class Coregistration(EOProcessingUnit):
         # 4. Extract coregistration specific parameters
         do_flattening = kwargs.get("do_flattening", config["Coregistration"]["do_flattening"])
         do_reramp = kwargs.get("do_reramp", config["Coregistration"]["do_reramp"])
-        ov_fact_low_acc = kwargs.get("warp_ov_fact_low_acc", config["Coregistration"]["warp_ov_fact"])
-        kernel_shape_low_acc = kwargs.get("warp_kernel_shape_low_acc", config["Coregistration"]["warp_kernel_shape"])
-        kaiser_beta_low_acc = kwargs.get("warp_kaiser_beta_low_acc", config["Coregistration"]["warp_kaiser_beta"])
-        ov_fact_high_acc = kwargs.get("warp_ov_fact_high_acc", config["Coregistration"]["warp_ov_fact"])
-        kernel_shape_high_acc = kwargs.get("warp_kernel_shape_high_acc", config["Coregistration"]["warp_kernel_shape"])
-        kaiser_beta_high_acc = kwargs.get("warp_kaiser_beta_high_acc", config["Coregistration"]["warp_kaiser_beta"])
+        ov_fact_low_acc = kwargs.get("warp_ov_fact_low_acc", config["Coregistration"]["warp_ov_fact_low_acc"])
+        kernel_shape_low_acc = kwargs.get(
+            "warp_kernel_shape_low_acc", config["Coregistration"]["warp_kernel_shape_low_acc"]
+        )
+        kaiser_beta_low_acc = kwargs.get(
+            "warp_kaiser_beta_low_acc", config["Coregistration"]["warp_kaiser_beta_low_acc"]
+        )
+        ov_fact_high_acc = kwargs.get("warp_ov_fact_high_acc", config["Coregistration"]["warp_ov_fact_high_acc"])
+        kernel_shape_high_acc = kwargs.get(
+            "warp_kernel_shape_high_acc", config["Coregistration"]["warp_kernel_shape_high_acc"]
+        )
+        kaiser_beta_high_acc = kwargs.get(
+            "warp_kaiser_beta_high_acc", config["Coregistration"]["warp_kaiser_beta_high_acc"]
+        )
         image_matching_degree = kwargs.get("image_matching_degree", config["Coregistration"]["image_matching_degree"])
         coherence_threshold_image_matching = kwargs.get(
             "coherence_threshold_image_matching", config["Coregistration"]["coherence_threshold_image_matching"]
@@ -470,6 +478,10 @@ class Coregistration(EOProcessingUnit):
             get_wdir_static(adfs)
         )
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
+        if adfs is not None and "IONO" in adfs:
+            dbfile = get_adf(adfs["IONO"], ensure_local=True)
+        else:
+            dbfile = None
 
         # 6. Populate parameters dictionary for metadata/logging
         params["ov_fact_low_acc"] = ov_fact_low_acc
@@ -534,11 +546,6 @@ class Coregistration(EOProcessingUnit):
             recompute=recompute,
         )
 
-        logger.debug(f"reference_id : {reference_id}")
-        logger.debug(f"init current ref: {initialize_current_reference}")
-        logger.debug(f"image_matching: {do_image_matching}")
-        logger.debug(f"split spectrum : {do_split_spectrum}")
-
         # 9. Image matching refinement block
         if do_image_matching:
             slcs = finalize_coreg(
@@ -595,6 +602,8 @@ class Coregistration(EOProcessingUnit):
                 x_poly=x_poly,
                 y_poly=y_poly,
             )
+        else:
+            logger.info("Skipping image matching step (disabled in configuration).")
 
         if do_split_spectrum:
             slcs = finalize_coreg(
@@ -618,7 +627,10 @@ class Coregistration(EOProcessingUnit):
                 enable_dask=enable_dask,
                 multiburst=multiburst,
                 reference_id=reference_id,
+                dbfile=dbfile,
             )
+        else:
+            logger.info("Skipping split spectrum step (disabled in configuration).")
 
         cslcs, slcs = update_coreg(
             slcs,
@@ -637,7 +649,7 @@ class ReferenceUpdate(EOProcessingUnit):
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
-        return ["REFERENCE_DB"]
+        return ["REFDB"]
 
     @log_time("ReferenceUpdate Unit", logger)
     @resumable_breakpoint(identifier="ReferenceUpdate")
@@ -715,7 +727,7 @@ class CMLP(EOProcessingUnit):
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
-        return ["REFERENCE_DB"]
+        return ["REFDB"]
 
     @log_time("CMLP Unit", logger)
     @resumable_breakpoint(identifier="CMLP")
@@ -810,7 +822,7 @@ class Geocoding(EOProcessingUnit):
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
-        return ["REFERENCE_DB"]
+        return ["REFDB"]
 
     @log_time("Geocoding Unit", logger)
     @resumable_breakpoint(identifier="Geocoding")
