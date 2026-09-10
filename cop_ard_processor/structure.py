@@ -16,9 +16,8 @@
 Structure checks module for COP ARD Processor.
 
 Provides functions to recursively validate the internal structure of an
-xarray.DataTree against a YAML template specification. Supports optional nodes
-(e.g., conditional ETAD blocks), nested attributes with list indexing, dimensions,
-and dynamic child groups.
+xarray.DataTree against a YAML template specification. Supports bidirectional checks
+(detecting both missing required items and unexpected/extra items).
 """
 
 from __future__ import annotations
@@ -33,22 +32,8 @@ import yaml
 DEFAULT_LOGGER = logging.getLogger(__name__)
 
 
-# region: FUNCTIONS TO CHECK STRUCTURE OF A DATATREE FROM YAML TEMPLATE
-
-
 def check_map(keyword: str):
-    """
-    Map a reserved template keyword to its corresponding validation function.
-
-    Parameters:
-        keyword (str): Template keyword ('attributes', 'coords', 'groups', etc.).
-
-    Returns:
-        Callable: The corresponding check function.
-
-    Raises:
-        ValueError: If an unrecognized keyword is encountered in the template.
-    """
+    """Map a reserved template keyword to its corresponding validation function."""
     func_map_dict = {
         "attributes": check_attributes,
         "coords": check_coordinates,
@@ -67,22 +52,11 @@ def check_attributes(
     input_data: xr.DataTree | xr.DataArray | dict,
     template: dict,
     path: str = "",
+    allow_extra: bool = False,
     logger: Any = DEFAULT_LOGGER,
 ) -> list[str]:
     """
-    Recursively validate attributes against a template specification.
-
-    Supports nested dictionaries, list indexing via 'LIST<index>' keys (e.g., 'LIST0'),
-    and optional attributes via 'optional: true'.
-
-    Parameters:
-        input_data: Target object or attribute dictionary to validate.
-        template (dict): Template mapping expected attribute keys to specifications.
-        path (str): Cumulative string path for error reporting.
-        logger: Logger instance.
-
-    Returns:
-        list[str]: Accumulated list of error messages.
+    Validate attributes bidirectionally against a template specification.
     """
     errors = []
     if isinstance(input_data, (xr.DataTree, xr.DataArray)):
@@ -95,14 +69,12 @@ def check_attributes(
         logger.error(err)
         return [err]
 
+    # 1. Forward check: Template -> Input
     for key, value in template.items():
-        # Skip internal validation flags
         if key in ("optional", "size"):
             continue
 
         current_path = f"{path}/{key}" if path else key
-        logger.info(f"Checking attribute: {current_path}")
-
         is_optional = isinstance(value, dict) and value.get("optional", False)
 
         if key not in attrs:
@@ -110,8 +82,6 @@ def check_attributes(
                 err = f"Missing attribute key: {current_path}"
                 errors.append(err)
                 logger.error(err)
-            else:
-                logger.info(f"Skipping optional attribute: {current_path} (not present)")
             continue
 
         # Handle list-indexed attribute inspection (e.g., LIST0 -> attrs[key][0])
@@ -128,6 +98,7 @@ def check_attributes(
                                 target_elem,
                                 v,
                                 f"{current_path}[{counter}]",
+                                allow_extra=allow_extra,
                                 logger=logger,
                             )
                         )
@@ -136,7 +107,6 @@ def check_attributes(
                         errors.append(err)
                         logger.error(err)
 
-        # Handle standard nested dictionary attribute structure
         if not has_list_keys and isinstance(value, dict) and value:
             if not isinstance(attrs[key], dict):
                 err = (
@@ -150,9 +120,18 @@ def check_attributes(
                         attrs[key],
                         value,
                         current_path,
+                        allow_extra=allow_extra,
                         logger=logger,
                     )
                 )
+
+    # 2. Reverse check: Input -> Template (detect unexpected attributes)
+    if not allow_extra:
+        for attr_key in attrs:
+            if attr_key not in template:
+                err = f"Unexpected extra attribute at '{path}': '{attr_key}'"
+                errors.append(err)
+                logger.error(err)
 
     return errors
 
@@ -161,21 +140,15 @@ def check_coordinates(
     dt: xr.DataTree | xr.DataArray,
     template: dict,
     path: str = "",
+    allow_extra: bool = False,
     logger: Any = DEFAULT_LOGGER,
 ) -> list[str]:
     """
-    Validate coordinates on a DataTree node or DataArray against the template.
-
-    Parameters:
-        dt: DataTree or DataArray node containing coordinates.
-        template (dict): Template dictionary specifying expected coordinate names.
-        path (str): Cumulative string path.
-        logger: Logger instance.
-
-    Returns:
-        list[str]: Accumulated list of error messages.
+    Validate coordinates bidirectionally.
     """
     errors = []
+
+    # 1. Forward check: Template -> DataTree
     for coord_name, coord_spec in template.items():
         if coord_name == "optional":
             continue
@@ -187,17 +160,25 @@ def check_coordinates(
                 err = f"Missing coordinate: {path}/{coord_name}"
                 errors.append(err)
                 logger.error(err)
-            else:
-                logger.info(f"Skipping optional coordinate: {path}/{coord_name} (not present)")
         else:
             errors.extend(
                 check_structure(
                     dt=dt.coords[coord_name],
                     template=coord_spec if isinstance(coord_spec, dict) else {},
                     path=f"{path}/coords/{coord_name}",
+                    allow_extra=allow_extra,
                     logger=logger,
                 )
             )
+
+    # 2. Reverse check: DataTree -> Template (detect extra coordinates)
+    if not allow_extra:
+        for coord_name in dt.coords:
+            if coord_name not in template:
+                err = f"Unexpected extra coordinate at '{path}': '{coord_name}'"
+                errors.append(err)
+                logger.error(err)
+
     return errors
 
 
@@ -205,24 +186,15 @@ def check_groups(
     dt: xr.DataTree,
     template: dict,
     path: str = "",
+    allow_extra: bool = False,
     logger: Any = DEFAULT_LOGGER,
 ) -> list[str]:
     """
-    Validate child groups (sub-nodes) of a DataTree against the template.
-
-    Safely skips groups marked with 'optional: true' in the YAML template
-    (e.g., conditional ETAD blocks).
-
-    Parameters:
-        dt (xr.DataTree): Parent DataTree node.
-        template (dict): Expected group hierarchy dictionary.
-        path (str): Cumulative string path.
-        logger: Logger instance.
-
-    Returns:
-        list[str]: Accumulated list of error messages.
+    Validate child groups (sub-nodes) bidirectionally.
     """
     errors = []
+
+    # 1. Forward check: Template -> DataTree
     for group_name, group_spec in template.items():
         if group_name == "optional":
             continue
@@ -234,17 +206,25 @@ def check_groups(
                 err = f"Missing group: {path}/{group_name}"
                 errors.append(err)
                 logger.error(err)
-            else:
-                logger.info(f"Skipping optional group: {path}/{group_name} (not present)")
         else:
             errors.extend(
                 check_structure(
                     dt=dt.children[group_name],
                     template=group_spec if isinstance(group_spec, dict) else {},
                     path=f"{path}/groups/{group_name}",
+                    allow_extra=allow_extra,
                     logger=logger,
                 )
             )
+
+    # 2. Reverse check: DataTree -> Template (detect unexpected groups)
+    if not allow_extra:
+        for child_name in dt.children:
+            if child_name not in template:
+                err = f"Unexpected extra group at '{path}': '{child_name}'"
+                errors.append(err)
+                logger.error(err)
+
     return errors
 
 
@@ -252,21 +232,15 @@ def check_data_variables(
     dt: xr.DataTree,
     template: dict,
     path: str = "",
+    allow_extra: bool = False,
     logger: Any = DEFAULT_LOGGER,
 ) -> list[str]:
     """
-    Validate data variables of a DataTree node against the template specification.
-
-    Parameters:
-        dt (xr.DataTree): Target DataTree node.
-        template (dict): Expected data variable definitions.
-        path (str): Cumulative string path.
-        logger: Logger instance.
-
-    Returns:
-        list[str]: Accumulated list of error messages.
+    Validate data variables bidirectionally.
     """
     errors = []
+
+    # 1. Forward check: Template -> DataTree
     for var_name, var_spec in template.items():
         if var_name == "optional":
             continue
@@ -278,17 +252,25 @@ def check_data_variables(
                 err = f"Missing data variable: {path}/{var_name}"
                 errors.append(err)
                 logger.error(err)
-            else:
-                logger.info(f"Skipping optional data variable: {path}/{var_name} (not present)")
         else:
             errors.extend(
                 check_structure(
                     dt=dt.data_vars[var_name],
                     template=var_spec if isinstance(var_spec, dict) else {},
                     path=f"{path}/data_variables/{var_name}",
+                    allow_extra=allow_extra,
                     logger=logger,
                 )
             )
+
+    # 2. Reverse check: DataTree -> Template (detect unexpected data variables)
+    if not allow_extra:
+        for var_name in dt.data_vars:
+            if var_name not in template:
+                err = f"Unexpected extra data variable at '{path}': '{var_name}'"
+                errors.append(err)
+                logger.error(err)
+
     return errors
 
 
@@ -296,20 +278,10 @@ def check_data(
     dt: xr.DataTree,
     template: dict,
     path: str = "",
+    allow_extra: bool = False,
     logger: Any = DEFAULT_LOGGER,
 ) -> list[str]:
-    """
-    Validate all immediate child nodes of a DataTree against a shared schema.
-
-    Parameters:
-        dt (xr.DataTree): Parent DataTree node.
-        template (dict): Unified template schema applied to every child node.
-        path (str): Cumulative string path.
-        logger: Logger instance.
-
-    Returns:
-        list[str]: Accumulated list of error messages.
-    """
+    """Validate all immediate child nodes of a DataTree against a shared schema."""
     errors = []
     for child_name, child in dt.children.items():
         errors.extend(
@@ -317,6 +289,7 @@ def check_data(
                 dt=child,
                 template=template,
                 path=f"{path}/{child_name}" if path else child_name,
+                allow_extra=allow_extra,
                 logger=logger,
             )
         )
@@ -327,21 +300,13 @@ def check_dimensions(
     dt: xr.DataTree | xr.DataArray,
     dimensions: dict,
     path: str = "",
+    allow_extra: bool = False,
     logger: Any = DEFAULT_LOGGER,
 ) -> list[str]:
-    """
-    Validate dimension existence and optional size constraints.
-
-    Parameters:
-        dt: DataTree node or DataArray instance being checked.
-        dimensions (dict): Expected dimensions schema (e.g., {'azimuth_time': {'size': 200}}).
-        path (str): Cumulative string path.
-        logger: Logger instance.
-
-    Returns:
-        list[str]: Accumulated list of error messages.
-    """
+    """Validate dimensions and sizes bidirectionally."""
     errors = []
+
+    # 1. Forward check: Template -> DataTree
     for dim_name, dim_spec in dimensions.items():
         if dim_name == "optional":
             continue
@@ -353,10 +318,7 @@ def check_dimensions(
                 err = f"Missing dimension: {path}/{dim_name}"
                 errors.append(err)
                 logger.error(err)
-            else:
-                logger.info(f"Skipping optional dimension: {path}/{dim_name} (not present)")
         else:
-            # Validate dimension size if specified in template
             if isinstance(dim_spec, dict) and "size" in dim_spec:
                 expected_size = dim_spec["size"]
                 actual_size = dt.sizes[dim_name]
@@ -365,7 +327,6 @@ def check_dimensions(
                     errors.append(err)
                     logger.error(err)
 
-            # Safely recurse only if the dimension exists as a coordinate on dt
             if isinstance(dim_spec, dict) and dim_spec:
                 if hasattr(dt, "coords") and dim_name in dt.coords:
                     errors.extend(
@@ -373,9 +334,19 @@ def check_dimensions(
                             dt[dim_name],
                             dim_spec,
                             f"{path}/dimensions/{dim_name}",
+                            allow_extra=allow_extra,
                             logger=logger,
                         )
                     )
+
+    # 2. Reverse check: DataTree -> Template (detect unexpected dimensions)
+    if not allow_extra:
+        for dim_name in dt.dims:
+            if dim_name not in dimensions:
+                err = f"Unexpected extra dimension at '{path}': '{dim_name}'"
+                errors.append(err)
+                logger.error(err)
+
     return errors
 
 
@@ -383,23 +354,10 @@ def check_structure(
     dt: xr.DataTree | xr.DataArray,
     template: dict,
     path: str = "",
+    allow_extra: bool = False,
     logger: Any = DEFAULT_LOGGER,
 ) -> list[str]:
-    """
-    Main dispatcher evaluating reserved keywords in a template against a target node.
-
-    Reserved keywords evaluated:
-        'data', 'attributes', 'dimensions', 'coords', 'data_variables', 'groups'
-
-    Parameters:
-        dt: Target DataTree or DataArray node.
-        template (dict): Sub-template mapping to validate.
-        path (str): Cumulative path string.
-        logger: Logger instance.
-
-    Returns:
-        list[str]: Accumulated list of error messages across sub-checks.
-    """
+    """Main dispatcher evaluating reserved keywords in a template against a target node."""
     reserved_keywords = [
         "data",
         "attributes",
@@ -414,70 +372,31 @@ def check_structure(
 
     for keyword in reserved_keywords:
         if keyword in template:
-            logger.info(f"Checking : {path}/{keyword}")
             checker_func = check_map(keyword)
-            errors.extend(checker_func(dt, template[keyword], path, logger=logger))
-
-    return errors
-
-
-def check_bursts(
-    dt: xr.DataTree,
-    template: dict,
-    path: str = "",
-    logger: Any = DEFAULT_LOGGER,
-) -> list[str]:
-    """
-    Validate dynamic child nodes (bursts/slices) against a template specification.
-
-    Parameters:
-        dt (xr.DataTree): DataTree node holding burst/slice child nodes.
-        template (dict): Template containing 'bursts' or 'slices' keywords.
-        path (str): Cumulative string path.
-        logger: Logger instance.
-
-    Returns:
-        list[str]: Accumulated list of error messages.
-    """
-    errors = []
-    bursts_key_words = ["bursts", "slices"]
-    for keyword in bursts_key_words:
-        if keyword in template:
-            burst_template = template[keyword]
-            for burst_name, burst_data in dt.children.items():
-                logger.info(f"Checking burst/slice child: {burst_name}")
-                if not isinstance(burst_data, xr.DataTree):
-                    err = f"Child node '{burst_name}' is not an instance of xarray.DataTree."
-                    errors.append(err)
-                    logger.error(err)
-                    continue
-                new_err = check_structure(
-                    dt=burst_data,
-                    template=burst_template,
-                    path=burst_name,
-                    logger=logger,
+            # Pass allow_extra parameter down the recursive check chain
+            try:
+                errors.extend(
+                    checker_func(
+                        dt,
+                        template[keyword],
+                        path,
+                        allow_extra=allow_extra,
+                        logger=logger,
+                    )
                 )
-                errors.extend(new_err)
+            except TypeError:
+                errors.extend(checker_func(dt, template[keyword], path, logger=logger))
+
     return errors
 
 
 def check_ARD_outputs(
     dt: xr.DataTree,
     product_id: str,
+    allow_extra: bool = False,
     logger: Any = DEFAULT_LOGGER,
 ) -> None:
-    """
-    High-level validation entry point for COP ARD output products (CSLC, GMLP).
-
-    Parameters:
-        dt (xr.DataTree): Output DataTree product instance to validate.
-        product_id (str): Product identifier (e.g., 'cslcs', 'gmlp').
-        logger: Logger instance.
-
-    Raises:
-        ValueError: If structure checks fail or if an unsupported product_id is passed.
-        FileNotFoundError: If the designated YAML structure template file is missing.
-    """
+    """High-level validation entry point for COP ARD output products (CSLC, GMLP)."""
     parent = Path(__file__).parent.resolve()
     prod_id_lower = product_id.lower()
 
@@ -497,6 +416,7 @@ def check_ARD_outputs(
     with open(template_file, "r", encoding="utf-8") as f:
         template = yaml.safe_load(f)
 
-    checks = check_structure(dt, template, logger=logger)
+    # Run bidirectional check across the DataTree
+    checks = check_structure(dt, template, allow_extra=allow_extra, logger=logger)
     if checks:
         raise ValueError(f"ARD DataTree structure validation failed for '{product_id}':\n" + "\n".join(checks))

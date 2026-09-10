@@ -4,6 +4,7 @@ from functools import wraps
 from typing import Any, Callable
 
 import xarray as xr
+from cop_ard_core.logger import logger
 from eopf import EOConfiguration
 from eopf.common.file_utils import AnyPath
 from eopf.computing.breakpoint import TypeFunctionWritersDispatcher
@@ -88,7 +89,7 @@ def resumable_breakpoint(
                 for file in matching_files:
                     filename = file.basename.removeprefix(filename_prefix)
                     key = filename.split("_")[0]
-                    obj[key] = xr.open_datatree(file.to_zarr_store(), engine="zarr")  # type: ignore
+                    obj[key] = xr.open_datatree(file.to_zarr_store(), chunks={}, engine="zarr")  # type: ignore
                 for optional_output in optional_outputs:
                     if optional_output not in obj:
                         obj[optional_output] = None

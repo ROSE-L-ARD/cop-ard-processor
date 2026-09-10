@@ -17,3 +17,14 @@ cop-ard-app Python module.
 
 # Define the package version string.
 __version__ = "0.0.1"
+
+from cop_ard_core.logger import configure_logger
+from eopf.config import EOConfiguration
+
+
+def init_logging() -> None:
+    log_path = EOConfiguration().get("logging__custom_config", default=None)
+    configure_logger(log_path)
+
+
+init_logging()

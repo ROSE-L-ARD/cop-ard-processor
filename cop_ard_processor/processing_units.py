@@ -1,21 +1,22 @@
-from cop_ard_app.io import Path
 import json
 import os
 
 import xarray as xr
 from cop_ard_app.area_projection import stack_geometry, stack_mask
 from cop_ard_app.cmlp import stack_cmlp
-from cop_ard_app.coreg import stack_coregistration, finalize_coreg
+from cop_ard_app.coreg import finalize_coreg, stack_coregistration
 from cop_ard_app.dem import import_dem, stack_dem
 from cop_ard_app.etad import import_ETAD
 from cop_ard_app.gmlp import stack_gmlp
+from cop_ard_app.io import Path
 from cop_ard_app.matching import estimate_poly_matching, stack_disparity
 from cop_ard_app.model import extract_acquisition_dates, extract_orbits, update_coreg, update_gmlp
-from cop_ard_app.split_spectrum import split_spectrum
 from cop_ard_app.orbit import import_ORBIT
 from cop_ard_app.simulation import stack_simulation, stack_simulation_ml
 from cop_ard_app.slc import finalize_import, import_slc_stack
+from cop_ard_app.split_spectrum import split_spectrum
 from cop_ard_app.utils import get_bbox
+from cop_ard_core.logger import logger
 from eopf.computing import EOProcessingUnit
 
 from cop_ard_processor.breakpoints import resumable_breakpoint
@@ -28,7 +29,6 @@ from cop_ard_processor.utils import (
     get_wdir_static,
     log_time,
 )
-from cop_ard_core.logger import logger
 
 
 def _get_slcs_path(workdir_path_dynamic: str):
@@ -162,14 +162,15 @@ class Ingestion(EOProcessingUnit):
         )
 
         params["reference_id"] = reference_id
-        output = {"slcs": slcs, "params": params}
+        slcs.attrs["params"] = params
+        output = {"slcs": slcs}
         return output
 
 
 class ReferenceDEM(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "params"]
+        return ["slcs"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
@@ -180,7 +181,7 @@ class ReferenceDEM(EOProcessingUnit):
     def run(self, inputs, adfs=None, **kwargs):
         # 1. Extract base inputs and load the configuration
         slcs = inputs["slcs"]
-        params = inputs["params"]
+        params = slcs.attrs["params"]
         multiburst = _is_multiburst(slcs)
         dem_type = get_adf(adfs["DEM"])
         params["dem"] = dem_type.path
@@ -243,14 +244,15 @@ class ReferenceDEM(EOProcessingUnit):
             reference_id=reference_id,
         )
 
-        output = {"DEM": dem_tree, "params": params}
+        dem_tree.attrs["params"] = params
+        output = {"DEM": dem_tree}
         return output
 
 
 class ReferenceGeometry(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "dem", "params"]
+        return ["slcs", "dem"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
@@ -300,7 +302,7 @@ class ReferenceGeometry(EOProcessingUnit):
         # 1. Extract base inputs
         slcs = inputs["slcs"]
         dem_tree = inputs["dem"]
-        params = inputs["params"]
+        params = dem_tree.attrs["params"]
 
         # 2. Load configuration
         config = get_config(params["mode"])
@@ -375,6 +377,7 @@ class ReferenceGeometry(EOProcessingUnit):
             enable_dask=enable_dask,
         )
 
+        simulation_tree.attrs["params"] = params
         return {
             "simulation_ref": simulation_tree,
             "simulation_ml": simulation_ml_tree,
@@ -384,7 +387,7 @@ class ReferenceGeometry(EOProcessingUnit):
 class Coregistration(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "dem", "simulation_ref", "simulation_ml", "params"]
+        return ["slcs", "dem", "simulation_ref", "simulation_ml"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
@@ -401,7 +404,7 @@ class Coregistration(EOProcessingUnit):
         dem_tree = inputs["dem"]
         simulation_tree = inputs["simulation_ref"]
         simulation_ml_tree = inputs["simulation_ml"]
-        params = inputs["params"]
+        params = simulation_tree.attrs["params"]
 
         # 2. Load configuration based on the instrument mode
         config = get_config(params["mode"])
@@ -546,6 +549,8 @@ class Coregistration(EOProcessingUnit):
             recompute=recompute,
         )
 
+        x_poly = None
+        y_poly = None
         # 9. Image matching refinement block
         if do_image_matching:
             slcs = finalize_coreg(
@@ -628,6 +633,7 @@ class Coregistration(EOProcessingUnit):
                 multiburst=multiburst,
                 reference_id=reference_id,
                 dbfile=dbfile,
+                x_poly=x_poly,
             )
         else:
             logger.info("Skipping split spectrum step (disabled in configuration).")
@@ -639,13 +645,14 @@ class Coregistration(EOProcessingUnit):
             external_metadata=params,
             storage_options=storage_options_static,
         )
+        slcs.attrs["params"] = params
         return {"cslcs": cslcs, "slcs": slcs}
 
 
 class ReferenceUpdate(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "params"]
+        return ["slcs"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
@@ -656,7 +663,7 @@ class ReferenceUpdate(EOProcessingUnit):
     def run(self, inputs, adfs=None, **kwargs):
         # 1. Extract base inputs
         slcs = inputs["slcs"]
-        params = inputs["params"]
+        params = slcs.attrs["params"]
 
         # 2. Load configuration based on the instrument mode
         config = get_config(params["mode"])
@@ -723,7 +730,7 @@ class ReferenceUpdate(EOProcessingUnit):
 class CMLP(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["slcs", "params"]
+        return ["slcs"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
@@ -734,7 +741,7 @@ class CMLP(EOProcessingUnit):
     def run(self, inputs, adfs=None, **kwargs):
         # 1. Extract base inputs
         slcs = inputs["slcs"]
-        params = inputs["params"]
+        params = slcs.attrs["params"]
 
         # 2. Load configuration based on the instrument mode
         config = get_config(params["mode"])
@@ -807,7 +814,7 @@ class CMLP(EOProcessingUnit):
             working_directory_reference_db_dynamic,
             reference_id=reference_id,
         )
-
+        cmlp_tree.attrs["params"] = params
         return {
             "cmlp": cmlp_tree,
             "current_reference": current_reference,
@@ -818,7 +825,7 @@ class CMLP(EOProcessingUnit):
 class Geocoding(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
-        return ["cmlp", "slcs", "simulation_ref", "simulation_ml", "params"]
+        return ["cmlp", "slcs", "simulation_ref", "simulation_ml"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
@@ -827,11 +834,11 @@ class Geocoding(EOProcessingUnit):
     @log_time("Geocoding Unit", logger)
     @resumable_breakpoint(identifier="Geocoding")
     def run(self, inputs, adfs, **kwargs):
-        cmlp = inputs["cmlp"]
+        cmlp_tree = inputs["cmlp"]
         slcs = inputs["slcs"]
         simulation_tree = inputs["simulation_ref"]
         simulation_ml_tree = inputs["simulation_ml"]
-        params = inputs["params"]
+        params = cmlp_tree.attrs["params"]
 
         config = get_config(params["mode"])
         reference_id = params["reference_id"]
@@ -848,7 +855,7 @@ class Geocoding(EOProcessingUnit):
         enable_dask = kwargs.get("enable_dask", True)
 
         gmlp = stack_gmlp(
-            cmlp_tree=cmlp,
+            cmlp_tree=cmlp_tree,
             slcs=slcs,
             simulation_tree=simulation_tree,
             simulation_ml_tree=simulation_ml_tree,
