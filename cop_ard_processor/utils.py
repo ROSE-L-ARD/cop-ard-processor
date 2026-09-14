@@ -15,6 +15,7 @@ import copy
 import functools
 import json
 import logging
+import os
 import pathlib
 import time
 from collections.abc import Callable, Generator
@@ -53,17 +54,6 @@ def log_time(block_id: str, logger: logging.Logger):
         return wrapper
 
     return decorator
-
-
-@contextmanager
-def logging_level(level: int, logger: logging.Logger | None = None) -> Generator[Any, Any, Any]:
-    logger = logger or logging.getLogger()
-    old_level = logger.level
-    logger.setLevel(level)
-    try:
-        yield
-    finally:
-        logger.setLevel(old_level)
 
 
 def get_wdir_dynamic(folder: str = "dynamic") -> tuple[str, Any]:
@@ -244,49 +234,136 @@ def check_output(output: xr.DataTree) -> None:
                     logger.critical(f"{name_data}/{group_name}/{var_name} has nan values")
 
 
-def get_instrument_mode(in_files: list[xr.DataTree | str]):
-    data = in_files[0]
-    modes = ["IW", "EW"]
-    # Extract the string we need to search through
-    if isinstance(data, str):
-        search_string = data
-    else:
-        search_string = next(iter(data.keys()))
-    mode = next((m for m in modes if m in search_string), "SM")
+def get_instrument_mode(in_files: list[str]):
+    """Identify and validate that all input files belong to the same instrument mode/sensor.
 
-    return mode
+    Parameters
+    ----------
+    in_files : list of str.
+        List of input file paths.
+
+    Returns
+    -------
+    str
+        Validated acquisition mode or sensor type ('IW', 'EW', 'SM', 'SAOCOM', 'ROSEL').
+
+    Raises
+    ------
+    ValueError
+        If `in_files` is empty, if any file mode cannot be identified,
+        or if input files contain a mix of different modes/sensors.
+    """
+    if not in_files:
+        raise ValueError("The input list 'in_files' cannot be empty.")
+
+    def _extract_single_mode(item: str) -> str:
+        """Extract acquisition mode or sensor from a single file path or DataTree."""
+        search_string = item
+
+        search_upper = search_string.upper()
+
+        # Check SAOCOM pattern (e.g., S1A_OPER_SAR_EOSSP... or .xemt extension)
+        if any(token in search_upper for token in ["SAOCOM", "EOSSP", ".XEMT"]):
+            return "SAOCOM"
+
+        # Check RoseL pattern
+        if "ROSEL" in search_upper:
+            return "ROSEL"
+
+        # Check standard Sentinel-1 acquisition modes
+        for mode in ["IW", "EW", "SM"]:
+            if mode in search_upper:
+                return mode
+
+        raise ValueError(f"Unable to identify a valid instrument mode or sensor from input: '{search_string}'")
+
+    # 1. Identify mode for every file in the input list
+    detected_modes = [_extract_single_mode(f) for f in in_files]
+
+    # 2. Verify that all files belong to the exact same mode/sensor
+    unique_modes = set(detected_modes)
+    if len(unique_modes) > 1:
+        raise ValueError(
+            f"Mixed instrument modes detected in input files: {unique_modes}. "
+            "All input files must belong to the exact same mode/sensor."
+        )
+
+    return detected_modes[0]
 
 
-def breakpoints(products: list, names: list, unit: str):
-    for k, v in zip(names, products):
-        if isinstance(v, dict):
-            v_copy = copy.deepcopy(v)
-            for key, value in v_copy.items():
-                v_copy[key] = json.dumps(value)
-            v = xr.DataTree.from_dict({k: xr.Dataset(v_copy)})
-        elif v is None:
+def _get_slcs_path(workdir_path_dynamic: str):
+    return os.path.join(workdir_path_dynamic, "slcs")
+
+
+def _is_multiburst(slcs: xr.DataTree):
+    return "bursts" in slcs
+
+
+def _json_safe(val):
+    """Convert complex Python data structures into JSON-serializable strings.
+
+    Parameters
+    ----------
+    val : Any
+        Input value to be sanitized (dict, list, tuple, or scalar).
+
+    Returns
+    -------
+    Any
+        JSON string representation if `val` is a collection, otherwise the original primitive.
+    """
+    if isinstance(val, (dict, list, tuple)):
+        return json.dumps(val)
+    return val
+
+
+def log_processing_parameters(
+    params: dict[str, Any], unit: Any, logger: Any, show_global_metadata: bool = False
+) -> None:
+    """Log unit processing parameters in a clean, human-readable multiline format.
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary containing processing parameters.
+    unit : Any
+        The processing unit instance (`self`) or name string.
+    logger : Any
+        Structlog or standard logger instance.
+    show_global_metadata : bool, default False
+        If False, filters out static global metadata (e.g., ATBD links, providers)
+        to keep the debug log focused exclusively on execution settings.
+    """
+    unit_name = unit.__class__.__name__ if hasattr(unit, "__class__") and not isinstance(unit, str) else str(unit)
+
+    # Static metadata keys to optionally suppress from immediate debug view
+    metadata_keys = {
+        "atbd_link",
+        "facility",
+        "product_timeliness",
+        "product_timeliness_category",
+        "product_data_access",
+        "product_pixel_coordinate_convention",
+        "product_family_specification",
+        "cslc_status",
+        "providers",
+    }
+
+    display_dict = {}
+    for key, val in params.items():
+        if not show_global_metadata and key in metadata_keys:
             continue
-        brkp_trigger = declare_as_breakpoint(v, unit, filename_prefix=f"{k}_")
-        brkp_trigger()
 
+        # Temporarily decode serialized JSON strings back to Python objects for clean display
+        if isinstance(val, str) and val.startswith(("{", "[")):
+            try:
+                display_dict[key] = json.loads(val)
+                continue
+            except (json.JSONDecodeError, TypeError):
+                pass
 
-def add_processing_software(output: xr.DataTree) -> xr.DataTree:
+        display_dict[key] = val
 
-    eopf_version = eopf.__version__
-    s1_ard_version = cop_ard_processor.__version__
-
-    # Group the root node and its immediate children (1st level only) into a single list
-    nodes_to_update = [output] + list(output.values())
-
-    for node in nodes_to_update:
-        # 1. This will intentionally throw a KeyError if the exact structure doesn't exist
-        stac = node.attrs["stac_discovery"]
-
-        # 2. Update the nested dictionary
-        stac["properties"]["processing:software"]["EOPF"] = eopf_version
-        stac["properties"]["processing:software"]["Sentinel-1 ARD"] = s1_ard_version
-
-        # 3. Explicitly reassign the top-level attribute so xarray registers the change
-        node.attrs["stac_discovery"] = stac
-
-    return output
+    # Render formatted multiline string
+    formatted_json = json.dumps(display_dict, indent=2, default=str)
+    logger.debug(f"[{unit_name}] Execution parameters:\n{formatted_json}")

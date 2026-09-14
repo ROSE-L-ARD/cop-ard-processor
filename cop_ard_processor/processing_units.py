@@ -1,11 +1,13 @@
 import json
 import os
+from datetime import datetime, timezone
 
 import xarray as xr
 from cop_ard_app.area_projection import stack_geometry, stack_mask
 from cop_ard_app.cmlp import stack_cmlp
 from cop_ard_app.coreg import finalize_coreg, stack_coregistration
 from cop_ard_app.dem import import_dem, stack_dem
+from cop_ard_app.esd import stack_esd
 from cop_ard_app.etad import import_ETAD
 from cop_ard_app.gmlp import stack_gmlp
 from cop_ard_app.io import Path
@@ -15,46 +17,84 @@ from cop_ard_app.orbit import import_ORBIT
 from cop_ard_app.simulation import stack_simulation, stack_simulation_ml
 from cop_ard_app.slc import finalize_import, import_slc_stack
 from cop_ard_app.split_spectrum import split_spectrum
-from cop_ard_app.utils import get_bbox
+from cop_ard_app.utils import build_coreg_poly_dict, get_bbox
 from cop_ard_core.logger import logger
 from eopf.computing import EOProcessingUnit
 
 from cop_ard_processor.breakpoints import resumable_breakpoint
 from cop_ard_processor.utils import (
-    add_processing_software,
+    _get_slcs_path,
+    _is_multiburst,
+    _json_safe,
     get_adf,
     get_config,
     get_instrument_mode,
     get_wdir_dynamic,
     get_wdir_static,
+    log_processing_parameters,
     log_time,
 )
 
 
-def _get_slcs_path(workdir_path_dynamic: str):
-    return os.path.join(workdir_path_dynamic, "slcs")
-
-
-def _is_multiburst(slcs: xr.DataTree):
-    return "bursts" in slcs
-
-
 class Ingestion(EOProcessingUnit):
+    """Ingestion processing unit for Sentinel-1 and ROSE-L Single Look Complex (SLC) products.
+
+    This unit handles reading input SAFE/SLC data, applying radiometric calibration,
+    noise removal, deramping, and precise orbital/ETAD timing corrections. It also
+    populates EOPF-compliant `processing_history` metadata.
+    """
+
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required for ingestion."""
         return ["REFDB"]
 
     @log_time("Ingestion Unit", logger)
     @resumable_breakpoint(identifier="Ingestion")
     def run(self, inputs, adfs=None, **kwargs):
+        """Execute the SLC ingestion workflow.
+
+        Parameters
+        ----------
+        inputs : dict
+            Dictionary of input products supplied by the workflow orchestrator.
+        adfs : dict, optional
+            Dictionary mapping ADF types (e.g., 'ETAD', 'ORB', 'REFDB') to their file paths.
+        **kwargs : dict
+            Execution overrides and configuration settings:
+            - input_slcs_files (list of str): Paths to input SLC files.
+            - enable_dask (bool): Enable Dask lazy evaluation graph (default: True).
+            - recompute (bool): Force re-creation of reference database stack.
+            - chunks (dict): Dask chunk dimensions for the radar grid.
+            - calibration_type (str): Radiometric calibration target (e.g., 'sigma0').
+            - indices (list or int): Sub-swath or burst selection indices.
+            - polarization (list or str): Polarizations to process ('VV', 'VH', etc.).
+            - deramp (bool): Flag to apply deramping for TOPSAR modes.
+            - noise_removal (bool): Flag to enable thermal noise removal.
+            - apply_invalid_mask (bool): Flag to mask invalid edge samples.
+            - reference_id (str, optional): Target master acquisition identifier.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the output dataset: `{"slcs": slcs}`.
+
+        Raises
+        ------
+        ValueError
+            If `input_slcs_files` is missing or if mandatory `reference_id` is missing
+            for non-multiburst acquisitions when `recompute=False`.
+        """
         input_slcs_files = kwargs.get("input_slcs_files")
         if input_slcs_files is None:
             raise ValueError("input_slcs_files must be provided via processing parameters (kwargs).")
 
+        # 1. Resolve instrument mode and baseline configuration
         mode = get_instrument_mode(input_slcs_files)
         config = get_config(mode)
-        multiburst = True if mode in ["IW", "EW"] else False
+        multiburst = mode in ["IW", "EW"]
 
+        # 2. Extract execution parameters from kwargs and default configs
         enable_dask = kwargs.get("enable_dask", True)
         recompute = kwargs.get("recompute", config["Global"]["recompute"])
         chunks = kwargs.get("chunks", config["Global"]["chunks_radar_grid"])
@@ -65,28 +105,35 @@ class Ingestion(EOProcessingUnit):
         deramp = kwargs.get("deramp", config["Ingestion"]["deramp"])
         noise_removal = kwargs.get("noise_removal", config["Ingestion"]["noise_removal"])
         apply_invalid_mask = kwargs.get("apply_invalid_mask", config["Ingestion"]["apply_invalid_mask"])
-
         reference_id = kwargs.get("reference_id")
+
+        # Ensure indices parameter is formatted as a list
+        if isinstance(indices, int):
+            indices = [indices]
+
+        # 3. Construct unit processing parameters dictionary
         params = {
             "mode": mode,
-            "chunks_radar_grid": json.dumps(chunks),
             "multiburst": multiburst,
-            "polarization": polarization,
+            "enable_dask": enable_dask,
+            "recompute": recompute,
+            "reference_id": reference_id,
+            "chunks_radar_grid": _json_safe(chunks),
+            "polarization": _json_safe(polarization),
             "deramp": deramp,
             "noise_removal": noise_removal,
             "apply_invalid_mask": apply_invalid_mask,
             "measurement_type": calibration_type,
+            "indices": _json_safe(indices),
         }
 
-        logger.info(f"Processing parameters: {params}")
+        log_processing_parameters(params, self, logger)
 
+        # Resolve static and dynamic working directories
         working_directory_static, _, storage_options_static = get_wdir_static(adfs)
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
-        # Ensure indices are a list
-        if isinstance(indices, int):
-            indices = [indices]
-
+        # Validate reference acquisition configuration
         if not multiburst and reference_id is None and not recompute:
             raise ValueError(
                 f"Missing reference_id. For non-multiburst modes ({mode}), a reference_id "
@@ -96,7 +143,7 @@ class Ingestion(EOProcessingUnit):
         slcs_path = _get_slcs_path(working_directory_dynamic)
         do_import = not recompute
 
-        # Import the SLC stack, applying calibration and corrections
+        # 4. Import SLC stack and apply radiometric/geometric preprocessing
         slcs = import_slc_stack(
             input_slcs_files,
             slcs_path,
@@ -115,7 +162,8 @@ class Ingestion(EOProcessingUnit):
 
         acquisition_dates = extract_acquisition_dates(slcs, multiburst=multiburst)
 
-        # Apply precise timing (ETAD) or orbit corrections
+        # 5. Apply external ETAD and precise orbit auxiliary data
+        adfs_list = []
         if (adfs is not None) and (recompute is False):
             etad_files = []
             orbit_files = []
@@ -124,6 +172,7 @@ class Ingestion(EOProcessingUnit):
                     etad_files.append(get_adf(v))
                 if "ORB" in k:
                     orbit_files.append(get_adf(v))
+
             slcs, used_etads = import_ETAD(
                 slcs,
                 acquisition_dates,
@@ -133,7 +182,9 @@ class Ingestion(EOProcessingUnit):
                 storage_options=storage_options_dynamic,
                 enable_dask=enable_dask,
             )
-            params["etad"] = used_etads
+            if used_etads:
+                adfs_list.append(used_etads)
+
             slcs, used_orbits = import_ORBIT(
                 slcs,
                 acquisition_dates,
@@ -143,16 +194,12 @@ class Ingestion(EOProcessingUnit):
                 storage_options=storage_options_dynamic,
                 enable_dask=enable_dask,
             )
-            params["orbit"] = used_orbits
+            if used_orbits:
+                adfs_list.append(used_orbits)
         else:
-            logger.info("Neither ETAD or external orbits have been provided")
+            logger.info("Neither ETAD nor external orbits have been provided.")
 
-        # Extract acquisition dates for matching with correction files
-        # Finalize the import process by checking if reference data is available
-        logger.debug(f"reference_id : {reference_id}")
-        logger.debug(f"do_import: {do_import}")
-        logger.debug(f"recompute: {recompute}")
-
+        # 6. Finalize stack import and set reference acquisition ID
         slcs, reference_id = finalize_import(
             slcs=slcs,
             working_directory=working_directory_static,
@@ -162,62 +209,123 @@ class Ingestion(EOProcessingUnit):
         )
 
         params["reference_id"] = reference_id
-        slcs.attrs["params"] = params
+
+        # 7. Register metadata record in EOPF processing history
+        current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        facility = kwargs.get("facility", config.get("Global", {}).get("facility", "ESA-Copernicus Ground Segment"))
+
+        ingestion_step = {
+            "processor": "COP ARD Ingestion Unit",
+            "version": getattr(self, "version", "0.0.1"),
+            "facility": facility,
+            "time": current_time,
+            "inputs": [str(f) for f in input_slcs_files]
+            if isinstance(input_slcs_files, list)
+            else str(input_slcs_files),
+            "outputs": ["slcs"],
+            "adfs": adfs_list,
+            "execution_parameters": params,
+        }
+
+        # Safely append step metadata without overwriting existing Dataset attributes
+        slcs.attrs["params"] = [ingestion_step]
+        logger.critical(f"params: {slcs.attrs['params']}")
         output = {"slcs": slcs}
         return output
 
 
 class ReferenceDEM(EOProcessingUnit):
+    """Reference Digital Elevation Model (DEM) processing unit.
+
+    This unit handles importing, cropping to bounding box, and resampling the target DEM
+    to match the spatial radar grid and coordinate system of the input SLC stack.
+    """
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory input data products required by this unit."""
         return ["slcs"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB", "DEM"]
 
     @log_time("ReferenceDEM Unit", logger)
     @resumable_breakpoint(identifier="ReferenceDEM")
     def run(self, inputs, adfs=None, **kwargs):
-        # 1. Extract base inputs and load the configuration
+        """Execute the Reference DEM processing workflow.
+
+        Parameters
+        ----------
+        inputs : dict
+            Dictionary of input products supplied by the workflow orchestrator (must include `"slcs"`).
+        adfs : dict, optional
+            Dictionary mapping ADF types (`"REFDB"`, `"DEM"`) to their file paths or objects.
+        **kwargs : dict
+            Execution overrides and configuration settings:
+            - recompute (bool): Force re-creation of reference DEM cache.
+            - chunks_geo_grid (dict): Spatial chunk sizes for the geographic grid.
+            - interpolation (str): Resampling method (e.g., 'bilinear', 'nearest').
+            - spacing (tuple or list): Pixel spacing in geographic/projected units.
+            - epsg (int or str, optional): Target EPSG projection code.
+            - reference_id (str, optional): Reference acquisition identifier.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the resampled DEM tree: `{"DEM": dem_tree}`.
+
+        Raises
+        ------
+        KeyError
+            If mandatory `"slcs"` dataset or mandatory ADFs are missing.
+        """
+        # 1. Extract base inputs and resolve instrument mode
         slcs = inputs["slcs"]
-        params = slcs.attrs["params"]
+        all_pararams = slcs.attrs["params"]
+        params = all_pararams[0]["execution_parameters"]
         multiburst = _is_multiburst(slcs)
-        dem_type = get_adf(adfs["DEM"])
-        params["dem"] = dem_type.path
+
+        # Safely determine instrument mode (from kwargs, slcs, or fallback)
         config = get_config(params["mode"])
 
-        # 2. Extract parameters from kwargs using the config as an explicit fallback
+        # Retrieve DEM auxiliary data object
+        dem_type = get_adf(adfs["DEM"])
+
+        # 2. Extract execution parameters with fallback to global/unit config
         recompute = kwargs.get("recompute", config["Global"]["recompute"])
         reference_id = params["reference_id"]
 
         chunks_geo_grid = kwargs.get("chunks_geo_grid", config["Global"]["chunks_geo_grid"])
-        # Filter chunks to keep only spatial dimensions
+        # Filter chunks to keep spatial dimensions only ('y', 'x')
         chunks = {k: v for k, v in chunks_geo_grid.items() if k in ["y", "x"]}
 
         method = kwargs.get("interpolation", config["ReferenceDEM"]["interpolation"])
         spacing = kwargs.get("spacing", config["ReferenceDEM"]["spacing"])
-
-        # epsg does not have a config fallback in the original code
         crs = kwargs.get("epsg")
 
-        # 3. Setup working directories
+        # 3. Setup static and dynamic working directories
         working_directory_static, _, storage_options_static = get_wdir_static(adfs)
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
-        # 4. Update the params dictionary for metadata/logging
-        params["chunks_geo_grid"] = json.dumps(chunks)
-        params["dem:interpolation"] = method
-        params["dem:spacing"] = json.dumps(spacing)
-        params["dem:crs"] = crs
+        # 4. Construct unit processing parameters dictionary
+        execution_parameters = {
+            "recompute": recompute,
+            "dem_type": str(dem_type.path),
+            "chunks_geo_grid": _json_safe(chunks),
+            "dem_interpolation": method,
+            "dem_spacing": _json_safe(spacing),
+            "dem_crs": crs,
+        }
 
-        logger.info(f"Processing parameters: {params}")
+        log_processing_parameters(execution_parameters, self, logger)
 
-        # 5. Execute core processing
-        # Get the bounding box of the SLC stack
+        # 5. Execute core DEM processing pipeline
+        # Compute spatial bounding box of the SLC stack
         bbox = get_bbox(slcs)
 
-        # Import the DEM for the specified bounding box
+        # Import DEM covering the target bounding box
         dem = import_dem(
             bbox=bbox,
             working_dir=working_directory_dynamic,
@@ -227,7 +335,7 @@ class ReferenceDEM(EOProcessingUnit):
             storage_options=storage_options_dynamic,
         )
 
-        # DEM resampling with the requested CRS and spacing
+        # Resample and stack DEM according to grid CRS and pixel spacing
         dem_tree = stack_dem(
             dem,
             slcs,
@@ -244,70 +352,83 @@ class ReferenceDEM(EOProcessingUnit):
             reference_id=reference_id,
         )
 
-        dem_tree.attrs["params"] = params
-        output = {"DEM": dem_tree}
+        # 6. Register metadata record in EOPF processing history
+        current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        facility = kwargs.get("facility", config.get("Global", {}).get("facility", "ESA-Copernicus Ground Segment"))
+
+        dem_step = {
+            "processor": "COP ARD ReferenceDEM Unit",
+            "version": getattr(self, "version", "0.0.1"),
+            "facility": facility,
+            "time": current_time,
+            "inputs": ["slcs"],
+            "outputs": ["dem"],
+            "adfs": [str(v.path) for v in adfs.values()] if adfs else [],
+            "execution_parameters": execution_parameters,
+        }
+
+        all_pararams.append(dem_step)
+        dem_tree.attrs["params"] = all_pararams
+        logger.critical(f"params: {dem_tree.attrs['params']}")
+        output = {"dem": dem_tree}
         return output
 
 
 class ReferenceGeometry(EOProcessingUnit):
+    """Reference Geometry processing unit for coregistration simulation.
+
+    This unit simulates the master radar geometry using the reference acquisition orbit
+    and the input DEM. It also pre-computes geometric layers (e.g., incidence angles)
+    and masks (layover, shadow) to be stored in the static working directory.
+    """
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory input dataset keys required by this unit."""
         return ["slcs", "dem"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
 
     @log_time("ReferenceGeometry Unit", logger)
     @resumable_breakpoint(identifier="ReferenceGeometry")
     def run(self, inputs, adfs=None, **kwargs):
-        """
-        Generates the reference geometry for coregistration.
-
-        This step uses the orbit of a single "master" acquisition (defined by
-        `reference_date`) and the DEM to simulate the master radar geometry.
-        It also pre-computes and saves geometric layers (e.g., incidence
-        angles) and masks (layover, shadow) to the static directory for reuse.
+        """Generates the reference geometry
 
         Parameters
         ----------
-        inputs : Mapping[str, xr.DataTree]
-            Input mapping. Expected keys:
-
-            - 'slcs': The calibrated SLC stack (xr.DataTree).
-            - 'dem': The resampled DEM (xr.DataTree).
-            - 'params': Processing parameters dictionary.
-        adfs : Mapping[str, ADF] | None, optional
-            Auxiliary Data Files mapping. Expected keys:
-
-            - 'REFDB': ADF for persistent storage.
-        **kwargs : Any
-            Additional keyword arguments (e.g., recompute, chunks_geo_grid, enable_dask).
+        inputs : dict
+            Input mapping containing:
+            - 'slcs': Calibrated SLC stack (xr.DataTree).
+            - 'dem': Resampled DEM (xr.DataTree).
+        adfs : dict, optional
+            Auxiliary Data Files mapping (must contain 'REFDB').
+        **kwargs : dict
+            Execution parameters (recompute, chunks_geo_grid, enable_dask, facility).
 
         Returns
         -------
-        Mapping[str, xr.DataTree]
-            A dictionary containing the reference simulation:
-
-            - 'simulation_ref': The simulated master geometry (xr.DataTree).
-            - 'simulation_ml': The multilooked simulated master geometry (xr.DataTree).
+        dict
+            Mapping containing geometry simulations:
+            - 'simulation_ref': Simulated master geometry (xr.DataTree).
+            - 'simulation_ml': Multilooked simulated master geometry (xr.DataTree).
 
         Raises
-        -------
-        ValueError
+        ------
+        KeyError
             If mandatory inputs ('slcs', 'dem') are missing.
-        TypeError
-            If inputs are not of type `xr.DataTree`.
         """
-        # 1. Extract base inputs
+        # 1. Extract base inputs and preserve exact metadata flow
         slcs = inputs["slcs"]
         dem_tree = inputs["dem"]
-        params = dem_tree.attrs["params"]
-
+        all_params = dem_tree.attrs["params"]
+        params = all_params[0]["execution_parameters"]
         # 2. Load configuration
         config = get_config(params["mode"])
 
-        # 3. Extract parameters from kwargs with explicit config/default fallbacks
+        # 3. Extract execution parameters with explicit config/default fallbacks
         recompute = kwargs.get("recompute", config["Global"]["recompute"])
         enable_dask = kwargs.get("enable_dask", True)
 
@@ -316,15 +437,16 @@ class ReferenceGeometry(EOProcessingUnit):
 
         reference_id = params["reference_id"]
 
-        # 4. Setup directories
+        # 4. Setup working directories
         working_directory_static, _, storage_options_static = get_wdir_static(adfs)
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
-        logger.info(f"Processing parameters: {params}")
+        # Update internal params dictionary
+        execution_parameters = {"enable_dask": enable_dask, "chunks_geo_grid": _json_safe(chunks)}
+        log_processing_parameters(execution_parameters, self, logger)
 
-        # 5. Core processing logic
-        # check if slcs is a multiburst type data (IW or EW)
-        multiburst = True if "bursts" in slcs else False
+        # 5. Core processing logic (identical to original pipeline calls)
+        multiburst = "bursts" in slcs
 
         orbits = extract_orbits(
             slcs,
@@ -377,7 +499,25 @@ class ReferenceGeometry(EOProcessingUnit):
             enable_dask=enable_dask,
         )
 
-        simulation_tree.attrs["params"] = params
+        # Preserve internal pipeline params attribute
+
+        # 6. EOPF Processing History registration (using 'execution_parameters')
+        current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        facility = kwargs.get("facility", config.get("Global", {}).get("facility", "ESA-Copernicus Ground Segment"))
+
+        geo_step = {
+            "processor": "COP ARD ReferenceGeometry Unit",
+            "version": getattr(self, "version", "0.0.1"),
+            "facility": facility,
+            "time": current_time,
+            "inputs": ["slcs", "DEM"],
+            "outputs": ["simulation_ref", "simulation_ml"],
+            "adfs": [str(v.path) for v in adfs.values()] if adfs else [],
+            "execution_parameters": execution_parameters,
+        }
+
+        all_params.append(geo_step)
+        simulation_tree.attrs["params"] = all_params
         return {
             "simulation_ref": simulation_tree,
             "simulation_ml": simulation_ml_tree,
@@ -385,31 +525,62 @@ class ReferenceGeometry(EOProcessingUnit):
 
 
 class Coregistration(EOProcessingUnit):
+    """Coregistration processing unit for aligning SLC stack to reference geometry.
+
+    This unit performs geometrical warping, image matching refinement, split-spectrum
+    ionospheric phase estimation, and Enhanced Spectral Diversity (ESD) corrections.
+    """
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory input datasets required by this unit."""
         return ["slcs", "dem", "simulation_ref", "simulation_ml"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
 
     @log_time("Coregistration Unit", logger)
     @resumable_breakpoint(identifier="Coregistration")
     def run(self, inputs, adfs=None, **kwargs):
+        """Coregisters the SLC stack to the reference geometry.
+
+        Parameters
+        ----------
+        inputs : dict
+            Input mapping containing:
+            - 'slcs': Calibrated SLC stack (xr.DataTree).
+            - 'dem': Resampled DEM (xr.DataTree).
+            - 'simulation_ref': Master geometry simulation (xr.DataTree).
+            - 'simulation_ml': Multilooked geometry simulation (xr.DataTree).
+        adfs : dict, optional
+            Auxiliary Data Files mapping (must include 'REFDB', optionally 'IONO').
+        **kwargs : dict
+            Execution overrides and module configurations.
+
+        Returns
+        -------
+        dict
+            Dictionary containing output datasets: `{"cslcs": cslcs, "slcs": slcs}`.
+
+        Raises
+        ------
+        KeyError
+            If mandatory inputs or configurations are missing.
         """
-        Coregisters the SLC stack to the reference geometry.
-        """
-        # 1. Extract base inputs
+        # 1. Extract base inputs and retain upstream pipeline parameters
         slcs = inputs["slcs"]
         dem_tree = inputs["dem"]
         simulation_tree = inputs["simulation_ref"]
         simulation_ml_tree = inputs["simulation_ml"]
-        params = simulation_tree.attrs["params"]
+        all_params = simulation_tree.attrs["params"]
+        params = all_params[0]["execution_parameters"]
 
-        # 2. Load configuration based on the instrument mode
+        # 2. Load instrument-specific configuration
         config = get_config(params["mode"])
 
-        # 3. Extract logic-controlling parameters
+        # 3. Extract execution control flags
         initialize_current_reference = kwargs.get(
             "initialize_current_reference", config["Coregistration"]["initialize_current_reference"]
         )
@@ -417,17 +588,19 @@ class Coregistration(EOProcessingUnit):
         if initialize_current_reference:
             do_image_matching = False
             do_split_spectrum = False
+            do_esd = False
             logger.info(
-                "initialize_current_reference is True: forcing do_image_matching and do_split_spectrum to False."
+                "initialize_current_reference is True: forcing do_image_matching, do_split_spectrum and do_esd to False."
             )
         else:
-            do_image_matching = kwargs.get("do_image_matching", config["Coregistration"]["do_image_matching"])
-            do_split_spectrum = kwargs.get("do_split_spectrum", config["Coregistration"]["do_split_spectrum"])
+            do_image_matching = kwargs.get("enable_image_matching", config["Coregistration"]["enable_image_matching"])
+            do_split_spectrum = kwargs.get("enable_split_spectrum", config["Coregistration"]["enable_split_spectrum"])
+            do_esd = kwargs.get("enable_esd", config["Coregistration"]["enable_esd"])
 
         recompute = kwargs.get("recompute", config["Global"]["recompute"])
         enable_dask = kwargs.get("enable_dask", True)
 
-        # Extract grid chunks and filter them
+        # Extract grid chunks and filter spatial dimensions ('y', 'x')
         chunks_geo_grid = kwargs.get("chunks_geo_grid", config["Global"]["chunks_geo_grid"])
         chunks = {k: v for k, v in chunks_geo_grid.items() if k in ["y", "x"]}
 
@@ -476,7 +649,7 @@ class Coregistration(EOProcessingUnit):
         logger.debug(f"frequency offset: {frequency_offset}")
         logger.debug(f"bandwidth: {bandwidth}")
 
-        # 5. Setup directories
+        # 5. Setup working directories and ADFs
         working_directory_reference_db_static, working_directory_reference_db_dynamic, storage_options_static = (
             get_wdir_static(adfs)
         )
@@ -486,13 +659,40 @@ class Coregistration(EOProcessingUnit):
         else:
             dbfile = None
 
-        # 6. Populate parameters dictionary for metadata/logging
-        params["ov_fact_low_acc"] = ov_fact_low_acc
-        params["kernel_shape_low_acc"] = kernel_shape_low_acc
-        params["kaiser_beta_low_acc"] = kaiser_beta_low_acc
-        params["ov_fact_high_acc"] = ov_fact_high_acc
-        params["kernel_shape_high_acc"] = kernel_shape_high_acc
-        params["kaiser_beta_high_acc"] = kaiser_beta_high_acc
+        # 6. Populate unit parameters dictionary with sanitized values
+        execution_parameters = {
+            "initialize_current_reference": initialize_current_reference,
+            "enable_image_matching": do_image_matching,
+            "enable_split_spectrum": do_split_spectrum,
+            "enable_esd": do_esd,
+            "recompute": recompute,
+            "enable_dask": enable_dask,
+            "chunks_geo_grid": _json_safe(chunks),
+            "do_flattening": do_flattening,
+            "do_reramp": do_reramp,
+            "ov_fact_low_acc": ov_fact_low_acc,
+            "kernel_shape_low_acc": _json_safe(kernel_shape_low_acc),
+            "kaiser_beta_low_acc": kaiser_beta_low_acc,
+            "ov_fact_high_acc": ov_fact_high_acc,
+            "kernel_shape_high_acc": _json_safe(kernel_shape_high_acc),
+            "kaiser_beta_high_acc": kaiser_beta_high_acc,
+            "image_matching_degree": image_matching_degree,
+            "coherence_threshold_image_matching": coherence_threshold_image_matching,
+            "coherence_threshold_split_spectrum": coherence_threshold_split_spectrum,
+            "matching_kernel_shape": _json_safe(matching_kernel_shape),
+            "wsize": _json_safe(wsize),
+            "wstep": _json_safe(wstep),
+            "wsearch": _json_safe(wsearch),
+            "dim": dim,
+            "block_size": block_size,
+            "bandwidth": bandwidth,
+            "frequency_offset": frequency_offset,
+            "multilook_split_spectrum": _json_safe(multilook_split_spectrum),
+            "esd_poly_degree": esd_poly_degree,
+            "split_spectrum_poly_degree": split_spectrum_poly_degree,
+            "height_ionosphere": h_iono,
+            "reference_id": reference_id,
+        }
 
         metadata_keys = [
             "atbd_link",
@@ -506,14 +706,13 @@ class Coregistration(EOProcessingUnit):
             "providers",
         ]
 
-        # Dynamically fetch metadata arguments from kwargs or Global config
         for name in metadata_keys:
-            params[name] = kwargs.get(name, config["Global"].get(name))
+            execution_parameters[name] = kwargs.get(name, config["Global"].get(name))
 
-        logger.info(f"Processing parameters: {params}")
+        log_processing_parameters(execution_parameters, self, logger)
 
-        # 7. Orbit information extraction and simulation for secondary images
-        multiburst = True if "bursts" in slcs else False
+        # 7. Orbit information extraction and secondary simulation
+        multiburst = "bursts" in slcs
         sec_orbits = extract_orbits(slcs, multiburst=multiburst)
         simulation_secondary_tree = None
 
@@ -531,7 +730,7 @@ class Coregistration(EOProcessingUnit):
                 reference_id=reference_id,
             )
 
-        # 8. Execute Coregistration stack
+        # 8. Primary coregistration execution
         slcs = stack_coregistration(
             slcs=slcs,
             simulation_reference_tree=simulation_tree,
@@ -551,6 +750,7 @@ class Coregistration(EOProcessingUnit):
 
         x_poly = None
         y_poly = None
+
         # 9. Image matching refinement block
         if do_image_matching:
             slcs = finalize_coreg(
@@ -559,6 +759,7 @@ class Coregistration(EOProcessingUnit):
                 reference_id=reference_id,
                 do_image_matching=do_image_matching,
                 do_split_spectrum=do_split_spectrum,
+                do_esd=do_esd,
             )
             disparity_map = stack_disparity(
                 slcs=slcs,
@@ -580,10 +781,8 @@ class Coregistration(EOProcessingUnit):
                 kernel_shape=matching_kernel_shape,
                 enable_dask=enable_dask,
             )
-            logger.debug(f"x_poly: {x_poly}")
-            logger.debug(f"y_poly: {y_poly}")
 
-            # Reset x_poly for specific modes
+            # Reset x_poly for TOPSAR modes
             if params["mode"] in ["IW", "EW"]:
                 x_poly = None
 
@@ -607,9 +806,24 @@ class Coregistration(EOProcessingUnit):
                 x_poly=x_poly,
                 y_poly=y_poly,
             )
+
+            # Safe attribute construction to prevent UnboundLocalError
+            if (x_poly is not None) or (y_poly is not None):
+                attrs = {
+                    "image_matching": build_coreg_poly_dict(
+                        description="Image Matching",
+                        y_poly=y_poly,
+                        x_poly=x_poly,
+                    )
+                }
+                slcs.attrs.setdefault("coregistration_polynomials", {}).update(attrs)
+            else:
+                slcs.attrs.setdefault("coregistration_polynomials", {})["image_matching"] = None
         else:
             logger.info("Skipping image matching step (disabled in configuration).")
+            slcs.attrs.setdefault("coregistration_polynomials", {})["image_matching"] = None
 
+        # 10. Split spectrum block
         if do_split_spectrum:
             slcs = finalize_coreg(
                 slcs=slcs,
@@ -617,6 +831,7 @@ class Coregistration(EOProcessingUnit):
                 reference_id=reference_id,
                 do_image_matching=do_image_matching,
                 do_split_spectrum=do_split_spectrum,
+                do_esd=do_esd,
             )
 
             slcs = split_spectrum(
@@ -637,44 +852,120 @@ class Coregistration(EOProcessingUnit):
             )
         else:
             logger.info("Skipping split spectrum step (disabled in configuration).")
+            slcs.attrs.setdefault("coregistration_polynomials", {})["split_spectrum"] = None
 
+        # 11. Enhanced Spectral Diversity (ESD) block
+        if do_esd:
+            slcs = finalize_coreg(
+                slcs=slcs,
+                working_directory=working_directory_reference_db_dynamic,
+                reference_id=reference_id,
+                do_image_matching=do_image_matching,
+                do_split_spectrum=do_split_spectrum,
+                do_esd=do_esd,
+            )
+            slcs = stack_esd(
+                slcs,
+                wdir_path=f"{working_directory_dynamic}/esd",
+                esd_poly_degree=esd_poly_degree,
+                enable_dask=enable_dask,
+                multiburst=multiburst,
+                reference_id=reference_id,
+            )
+        else:
+            logger.info("Skipping ESD (disabled in configuration).")
+            slcs.attrs.setdefault("coregistration_polynomials", {})["esd"] = None
+
+        # 13. Register step metadata in EOPF processing history
+        current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        facility = kwargs.get("facility", config.get("Global", {}).get("facility", "ESA-Copernicus Ground Segment"))
+
+        execution_parameters["coregistration_polynomials"] = slcs.attrs["coregistration_polynomials"]
+        coreg_step = {
+            "processor": "COP ARD Coregistration Unit",
+            "version": getattr(self, "version", "0.0.1"),
+            "facility": facility,
+            "time": current_time,
+            "inputs": ["slcs", "dem", "simulation_ref", "simulation_ml"],
+            "outputs": ["cslcs", "slcs"],
+            "adfs": [str(v.path) for v in adfs.values()] if adfs else [],
+            "execution_parameters": execution_parameters,
+        }
+
+        all_params.append(coreg_step)
+        slcs.attrs["params"] = all_params
+        # 12. Update final coregistered products
         cslcs, slcs = update_coreg(
             slcs,
             wdir_path_static=working_directory_reference_db_static,
             reference_id=reference_id,
-            external_metadata=params,
+            external_metadata=all_params,
             storage_options=storage_options_static,
         )
-        slcs.attrs["params"] = params
+
         return {"cslcs": cslcs, "slcs": slcs}
 
 
 class ReferenceUpdate(EOProcessingUnit):
+    """Reference Database Update processing unit.
+
+    This unit updates the dynamic reference
+    database with newly identified stable acquisitions without outputting a full CMLP product tree.
+    """
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory input datasets required by this unit."""
         return ["slcs"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
 
     @log_time("ReferenceUpdate Unit", logger)
     @resumable_breakpoint(identifier="ReferenceUpdate")
     def run(self, inputs, adfs=None, **kwargs):
-        # 1. Extract base inputs
-        slcs = inputs["slcs"]
-        params = slcs.attrs["params"]
+        """Executes reference update stack calculations and persists updated reference data.
 
-        # 2. Load configuration based on the instrument mode
+        Parameters
+        ----------
+        inputs : dict
+            Input mapping containing:
+            - 'slcs': Coregistered SLC stack (xr.DataTree).
+        adfs : dict, optional
+            Auxiliary Data Files mapping (must include 'REFDB').
+        **kwargs : dict
+            Execution overrides (posting, memory_param, coherence_threshold,
+            stable_interval_days, max_past_stable_history, enable_dask, facility).
+
+        Returns
+        -------
+        dict
+            Dictionary containing updated reference objects:
+            - 'current_reference': Current reference dataset object.
+            - 'stable_references': Identified stable reference dataset collection.
+
+        Raises
+        ------
+        KeyError
+            If mandatory inputs or configuration attributes are missing.
+        """
+        # 1. Extract base inputs and retain upstream pipeline parameters
+        slcs = inputs["slcs"]
+        all_params = slcs.attrs["params"]
+        params = all_params[0]["execution_parameters"]
+
+        # 2. Load instrument-specific configuration
         config = get_config(params["mode"])
 
-        # 3. Setup directories
+        # 3. Setup static and dynamic working directories
         working_directory_reference_db_static, working_directory_reference_db_dynamic, storage_options_static = (
             get_wdir_static(adfs)
         )
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
-        # 4. Extract parameters from kwargs with explicit config fallbacks
+        # 4. Extract execution parameters with explicit config fallbacks
         reference_id = params["reference_id"]
         posting = kwargs.get("posting", config["ReferenceUpdate"]["posting"])
         memory_param = kwargs.get("memory_param", config["ReferenceUpdate"]["memory_param"])
@@ -683,10 +974,21 @@ class ReferenceUpdate(EOProcessingUnit):
         max_past_stable_history = kwargs.get(
             "max_past_stable_history", config["ReferenceUpdate"]["max_past_stable_history"]
         )
-
         enable_dask = kwargs.get("enable_dask", True)
 
-        # 5. Execute CMLP stack
+        # 5. Populate unit execution parameters dictionary
+        execution_parameters = {
+            "posting": _json_safe(posting),
+            "memory_param": memory_param,
+            "coherence_threshold": coherence_threshold,
+            "stable_interval_days": stable_interval_days,
+            "max_past_stable_history": max_past_stable_history,
+            "enable_dask": enable_dask,
+        }
+
+        log_processing_parameters(execution_parameters, self, logger)
+
+        # 6. Execute CMLP stack calculation without saving metrics
         _, current_reference, stable_references = stack_cmlp(
             slcs=slcs,
             posting=posting,
@@ -707,10 +1009,7 @@ class ReferenceUpdate(EOProcessingUnit):
             reference_id=reference_id,
         )
 
-        logger.debug(f"stable_reference : {stable_references}")
-
-        # 6. Update Reference Database
-        # TODO: write script to do this externally.
+        # 7. Persist updated reference datasets to reference database
         from cop_ard_app.utils import update_reference_database
 
         logger.debug("SAVING CURRENT REFERENCE")
@@ -721,6 +1020,24 @@ class ReferenceUpdate(EOProcessingUnit):
             reference_id=reference_id,
         )
 
+        # 8. Register step metadata in EOPF processing history
+        current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        facility = kwargs.get("facility", config.get("Global", {}).get("facility", "ESA-Copernicus Ground Segment"))
+
+        ref_update_step = {
+            "processor": "COP ARD ReferenceUpdate Unit",
+            "version": getattr(self, "version", "0.0.1"),
+            "facility": facility,
+            "time": current_time,
+            "inputs": ["slcs"],
+            "outputs": ["current_reference", "stable_references"],
+            "adfs": [str(v.path) if hasattr(v, "path") else str(v) for v in adfs.values()] if adfs else [],
+            "execution_parameters": execution_parameters,
+        }
+
+        all_params.append(ref_update_step)
+
+        current_reference.attrs["processing_history"] = all_params
         return {
             "current_reference": current_reference,
             "stable_references": stable_references,
@@ -728,31 +1045,66 @@ class ReferenceUpdate(EOProcessingUnit):
 
 
 class CMLP(EOProcessingUnit):
+    """Coregistered Multi-Looked Phase (CMLP) processing unit.
+
+    This unit computes cmlp, identifies stable reference
+    acquisitions, updates the reference database, and generates updated stack products.
+    """
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory input datasets required by this unit."""
         return ["slcs"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
 
     @log_time("CMLP Unit", logger)
     @resumable_breakpoint(identifier="CMLP")
     def run(self, inputs, adfs=None, **kwargs):
-        # 1. Extract base inputs
-        slcs = inputs["slcs"]
-        params = slcs.attrs["params"]
+        """Executes the CMLP stack processing and updates the reference database.
 
-        # 2. Load configuration based on the instrument mode
+        Parameters
+        ----------
+        inputs : dict
+            Input mapping containing:
+            - 'slcs': Coregistered SLC stack (xr.DataTree).
+        adfs : dict, optional
+            Auxiliary Data Files mapping (must include 'REFDB').
+        **kwargs : dict
+            Execution overrides (posting, memory_param, coherence_threshold,
+            stable_interval_days, max_past_stable_history, enable_dask).
+
+        Returns
+        -------
+        dict
+            Dictionary containing processed output datasets:
+            - 'cmlp': Output CMLP data tree (xr.DataTree).
+            - 'current_reference': Current reference dataset object.
+            - 'stable_references': Identified stable reference dataset collection.
+
+        Raises
+        ------
+        KeyError
+            If mandatory inputs or configuration attributes are missing.
+        """
+        # 1. Extract base inputs and retain upstream pipeline parameters
+        slcs = inputs["slcs"]
+        all_params = slcs.attrs["params"]
+        params = all_params[0]["execution_parameters"]
+
+        # 2. Load instrument-specific configuration
         config = get_config(params["mode"])
 
-        # 3. Setup directories
+        # 3. Setup working directories
         working_directory_reference_db_static, working_directory_reference_db_dynamic, storage_options_static = (
             get_wdir_static(adfs)
         )
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
-        # 4. Extract parameters from kwargs with explicit config fallbacks
+        # 4. Extract execution parameters with explicit config fallbacks
         reference_id = params["reference_id"]
         posting = kwargs.get("posting", config["ReferenceUpdate"]["posting"])
         memory_param = kwargs.get("memory_param", config["ReferenceUpdate"]["memory_param"])
@@ -761,26 +1113,22 @@ class CMLP(EOProcessingUnit):
         max_past_stable_history = kwargs.get(
             "max_past_stable_history", config["ReferenceUpdate"]["max_past_stable_history"]
         )
-
-        names_params = [
-            "atbd_link",
-            "facility",
-            "product_data_access",
-            "product_pixel_coordinate_convention",
-            "product_family_specification",
-            "gmlp_status",
-            "providers",
-            "eastern_geometric_accuracy",
-            "northern_geometric_accuracy",
-            "geometric_accuracy_radial_rmse",
-            "product_filtering",
-        ]
-        for name in names_params:
-            params[name] = kwargs.get(name, config["Global"][name])
-
         enable_dask = kwargs.get("enable_dask", True)
 
-        # 5. Execute CMLP stack
+        # 5. Populate unit execution parameters dictionary
+        execution_parameters = {
+            "reference_id": reference_id,
+            "posting": _json_safe(posting),
+            "memory_param": memory_param,
+            "coherence_threshold": coherence_threshold,
+            "stable_interval_days": stable_interval_days,
+            "max_past_stable_history": max_past_stable_history,
+            "enable_dask": enable_dask,
+        }
+
+        log_processing_parameters(execution_parameters, self, logger)
+
+        # 6. Execute CMLP stack processing
         cmlp_tree, current_reference, stable_references = stack_cmlp(
             slcs=slcs,
             posting=posting,
@@ -801,20 +1149,37 @@ class CMLP(EOProcessingUnit):
             reference_id=reference_id,
         )
 
-        logger.debug(f"stable_reference : {stable_references}")
+        logger.debug(f"stable_reference: {stable_references}")
 
-        # 6. Update Reference Database
-        # TODO: write script to do this externally.
+        # 7. Update Reference Database
         from cop_ard_app.utils import update_reference_database
 
-        logger.debug("SAVING CURRENT REFERENCE")
-        update_reference_database(
-            current_reference,
-            stable_references,
-            working_directory_reference_db_dynamic,
-            reference_id=reference_id,
-        )
-        cmlp_tree.attrs["params"] = params
+        # logger.debug("SAVING CURRENT REFERENCE")
+        # update_reference_database(
+        #     current_reference,
+        #     stable_references,
+        #     working_directory_reference_db_dynamic,
+        #     reference_id=reference_id,
+        # )
+
+        # 8. Register step metadata in EOPF processing history
+        current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        facility = kwargs.get("facility", config.get("Global", {}).get("facility", "ESA-Copernicus Ground Segment"))
+
+        cmlp_step = {
+            "processor": "COP ARD CMLP Unit",
+            "version": getattr(self, "version", "0.0.1"),
+            "facility": facility,
+            "time": current_time,
+            "inputs": ["slcs"],
+            "outputs": ["cmlp", "current_reference", "stable_references"],
+            "adfs": [str(v.path) if hasattr(v, "path") else str(v) for v in adfs.values()] if adfs else [],
+            "execution_parameters": execution_parameters,
+        }
+
+        all_params.append(cmlp_step)
+        cmlp_tree.attrs["params"] = all_params
+
         return {
             "cmlp": cmlp_tree,
             "current_reference": current_reference,
@@ -823,30 +1188,69 @@ class CMLP(EOProcessingUnit):
 
 
 class Geocoding(EOProcessingUnit):
+    """Geocoding processing unit for projecting radar-grid data into geographic coordinates.
+
+    This unit resamples and warps the  CMLP stack onto the target geographic grid using specified resampling kernels and pixel spacing.
+    """
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory input datasets required by this unit."""
         return ["cmlp", "slcs", "simulation_ref", "simulation_ml"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
+        """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
 
     @log_time("Geocoding Unit", logger)
     @resumable_breakpoint(identifier="Geocoding")
     def run(self, inputs, adfs, **kwargs):
+        """Executes the geocoding processing pipeline.
+
+        Parameters
+        ----------
+        inputs : dict
+            Input mapping containing:
+            - 'cmlp': Output from CMLP processing (xr.DataTree).
+            - 'slcs': Coregistered SLC stack (xr.DataTree).
+            - 'simulation_ref': Master geometry simulation (xr.DataTree).
+            - 'simulation_ml': Multilooked geometry simulation (xr.DataTree).
+        adfs : dict, optional
+            Auxiliary Data Files mapping (must include 'REFDB').
+        **kwargs : dict
+            Execution overrides (warp_ov_fact, warp_kernel_shape, warp_kaiser_beta,
+            spacing, chunks_geo_grid, enable_dask, facility).
+
+        Returns
+        -------
+        dict
+            Dictionary containing geocoded output products:
+            - 'gmlp': Updated geocoded product stack (xr.DataTree).
+
+        Raises
+        ------
+        KeyError
+            If mandatory inputs or configuration attributes are missing.
+        """
+        # 1. Extract base inputs and retain upstream pipeline parameters
         cmlp_tree = inputs["cmlp"]
         slcs = inputs["slcs"]
         simulation_tree = inputs["simulation_ref"]
         simulation_ml_tree = inputs["simulation_ml"]
-        params = cmlp_tree.attrs["params"]
 
+        all_params = cmlp_tree.attrs["params"]
+        params = all_params[0]["execution_parameters"]
+
+        # 2. Load instrument-specific configuration
         config = get_config(params["mode"])
         reference_id = params["reference_id"]
 
-        # 3. Setup directories
+        # 3. Setup static and dynamic working directories
         working_directory_reference_db_static, _, storage_options_static = get_wdir_static(adfs)
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
 
+        # 4. Extract execution parameters with explicit config fallbacks
         ov_fact = kwargs.get("warp_ov_fact", config["Geocoding"]["warp_ov_fact"])
         kernel_shape = kwargs.get("warp_kernel_shape", config["Geocoding"]["warp_kernel_shape"])
         kaiser_beta = kwargs.get("warp_kaiser_beta", config["Geocoding"]["warp_kaiser_beta"])
@@ -854,6 +1258,34 @@ class Geocoding(EOProcessingUnit):
         chunks_geo_grid = kwargs.get("chunks_geo_grid", config["Global"]["chunks_geo_grid"])
         enable_dask = kwargs.get("enable_dask", True)
 
+        # 5. Populate unit execution parameters dictionary
+        execution_parameters = {
+            "warp_ov_fact": ov_fact,
+            "warp_kernel_shape": _json_safe(kernel_shape),
+            "warp_kaiser_beta": kaiser_beta,
+            "spacing": _json_safe(spacing),
+            "chunks_geo_grid": _json_safe(chunks_geo_grid),
+            "enable_dask": enable_dask,
+        }
+
+        metadata_keys = [
+            "atbd_link",
+            "facility",
+            "product_timeliness",
+            "product_timeliness_category",
+            "product_data_access",
+            "product_pixel_coordinate_convention",
+            "product_family_specification",
+            "gmlp_status",
+            "providers",
+        ]
+
+        for name in metadata_keys:
+            execution_parameters[name] = kwargs.get(name, config["Global"].get(name))
+
+        log_processing_parameters(execution_parameters, self, logger)
+
+        # 6. Core geocoding stack processing
         gmlp = stack_gmlp(
             cmlp_tree=cmlp_tree,
             slcs=slcs,
@@ -870,5 +1302,22 @@ class Geocoding(EOProcessingUnit):
             chunks=chunks_geo_grid,
         )
 
-        gmlp_update = update_gmlp(gmlp, slcs, params)
+        # 7. Register step metadata in EOPF processing history
+        current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        facility = kwargs.get("facility", config.get("Global", {}).get("facility", "ESA-Copernicus Ground Segment"))
+
+        geocoding_step = {
+            "processor": "COP ARD Geocoding Unit",
+            "version": getattr(self, "version", "0.0.1"),
+            "facility": facility,
+            "time": current_time,
+            "inputs": ["cmlp", "slcs", "simulation_ref", "simulation_ml"],
+            "outputs": ["gmlp"],
+            "adfs": [str(v.path) if hasattr(v, "path") else str(v) for v in adfs.values()] if adfs else [],
+            "execution_parameters": execution_parameters,
+        }
+
+        all_params.append(geocoding_step)
+
+        gmlp_update = update_gmlp(gmlp, slcs, all_params)
         return {"gmlp": gmlp_update}
