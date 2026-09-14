@@ -1007,16 +1007,6 @@ class ReferenceUpdate(EOProcessingUnit):
             reference_id=reference_id,
         )
 
-        # 7. Persist updated reference datasets to reference database
-        from cop_ard_app.utils import update_reference_database
-
-        logger.debug("SAVING CURRENT REFERENCE")
-        update_reference_database(
-            current_reference,
-            stable_references,
-            working_directory_reference_db_dynamic,
-            reference_id=reference_id,
-        )
 
         # 8. Register step metadata in EOPF processing history
         current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -1149,16 +1139,6 @@ class CMLP(EOProcessingUnit):
 
         logger.debug(f"stable_reference: {stable_references}")
 
-        # 7. Update Reference Database
-        from cop_ard_app.utils import update_reference_database
-
-        # logger.debug("SAVING CURRENT REFERENCE")
-        # update_reference_database(
-        #     current_reference,
-        #     stable_references,
-        #     working_directory_reference_db_dynamic,
-        #     reference_id=reference_id,
-        # )
 
         # 8. Register step metadata in EOPF processing history
         current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
