@@ -229,7 +229,6 @@ class Ingestion(EOProcessingUnit):
 
         # Safely append step metadata without overwriting existing Dataset attributes
         slcs.attrs["params"] = [ingestion_step]
-        logger.critical(f"params: {slcs.attrs['params']}")
         output = {"slcs": slcs}
         return output
 
@@ -369,7 +368,6 @@ class ReferenceDEM(EOProcessingUnit):
 
         all_pararams.append(dem_step)
         dem_tree.attrs["params"] = all_pararams
-        logger.critical(f"params: {dem_tree.attrs['params']}")
         output = {"dem": dem_tree}
         return output
 
@@ -738,7 +736,7 @@ class Coregistration(EOProcessingUnit):
             simulation_ml_tree=simulation_ml_tree,
             reference_id=reference_id,
             multiburst=multiburst,
-            working_directory=working_directory_dynamic,
+            working_directory=f"{working_directory_dynamic}/geometric",
             warp_ov_fact=ov_fact_low_acc,
             warp_kernel_shape=kernel_shape_low_acc,
             warp_kaiser_beta=kaiser_beta_low_acc,
