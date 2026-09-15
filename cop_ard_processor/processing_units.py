@@ -88,7 +88,8 @@ class Ingestion(EOProcessingUnit):
         input_slcs_files = kwargs.get("input_slcs_files")
         if input_slcs_files is None:
             raise ValueError("input_slcs_files must be provided via processing parameters (kwargs).")
-
+        logger.debug(f"TEST LOG DEBUG")
+        logger.info(f"TEST LOG INFO")
         # 1. Resolve instrument mode and baseline configuration
         mode = get_instrument_mode(input_slcs_files)
         config = get_config(mode)
@@ -881,7 +882,7 @@ class Coregistration(EOProcessingUnit):
                 reference_id=reference_id,
             )
         else:
-            logger.info("Skipping ESD (disabled in configuration).")
+            logger.info("Skipping ESD step (disabled in configuration).")
             slcs.attrs.setdefault("coregistration_polynomials", {})["esd"] = None
 
         # 13. Register step metadata in EOPF processing history
