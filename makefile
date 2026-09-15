@@ -6,6 +6,7 @@ NOTEBOOKS := $(CURDIR)/notebooks
 PROJ_DATA_DIR = $(shell uv run python -c "import pyproj; print(pyproj.datadir.get_data_dir())")
 GRID_URL := https://cdn.proj.org/us_nga_egm08_25.tif
 GRID_FILE := us_nga_egm08_25.tif
+GRID_ALIAS := Und_min1x1_egm2008_isw=82_WGS84_TideFree
 
 .PHONY: all proj format lint security complexity typecheck check
 
@@ -21,7 +22,7 @@ proj:
 		echo "$(GRID_FILE) already present."; \
 	fi
 	@echo "Creating symlink for EPSG grid alias..."
-	@ln -sf "$(GRID_FILE)" "$(PROJ_DATA_DIR)/$(GRID_ALIAS)"
+	@cd "$(PROJ_DATA_DIR)" && ln -sf "$(GRID_FILE)" "$(GRID_ALIAS)"
 	@echo "Installation and configuration completed successfully!"
 
 format:

@@ -1,0 +1,94 @@
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__use_basic_logging: true
+  temporary__folder: /data/SENTINEL1/SURAT/TMP/TC-ST-FUNC-002
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+  logging__custom_config: ./logger.yaml
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+      ETAD: ETAD
+    parameters:
+      input_slcs_files: [/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE]
+      indices: [0, 1, 27, 28]
+      polarization: ["VV"]
+  - name: reference_dem
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceDEM
+    inputs:
+      slcs: ingestion.slcs
+    adfs:
+      DEM: DEM
+      REFDB: REFDB
+  - name: reference_geometry
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceGeometry
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+    adfs:
+      REFDB: REFDB
+  - name: coregistration
+    module: cop_ard_processor.processing_units
+    processing_unit: Coregistration
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    parameters:
+      initialize_current_reference: true
+    outputs:
+      cslcs: cslcs
+  - name: reference_update
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceUpdate
+    inputs:
+      slcs: coregistration.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    outputs:
+      current_reference: current_reference
+      stable_references: stable_references
+io:
+  adfs:
+    - id: REFDB
+      path: /data/SENTINEL1/SURAT/WDIR/TC-ST-FUNC-002/REFDB
+    - id: DEM
+      path: /data/SENTINEL1/SURAT/dem
+    - id: ETAD
+      path: /data/SENTINEL1/SURAT/ETAD/S1A_IW_ETA__AXDV_20230727T084125_20230727T084152_049606_05F712_CBC0.SAFE
+  output_products:
+    - id: cslcs
+      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-FUNC-002/CSLC/cslcs_2023-07-27.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: current_reference
+      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-FUNC-002/CURRENT_REFERENCE/current_reference_2023-07-27.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: stable_references
+      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-FUNC-002/STABLE_REFERENCES/stable_reference_2023-07-27.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 16
+    threads_per_worker: 1
+    memory_limit: 0
