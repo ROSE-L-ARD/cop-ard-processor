@@ -33,7 +33,7 @@ class CaptureCalls(object):
 
 
 def run_payload(payload: dict[str, Any], dry_run: bool = False):
-    runner = EORunner()
+    runner = EORunner(clean=False)
     wrapped_dc = CaptureCalls(eopf.triggering.workflow_types.OutputWriteStatus)
     eopf.triggering.workflow_types.OutputWriteStatus = wrapped_dc  # type: ignore
     runner.run(payload)

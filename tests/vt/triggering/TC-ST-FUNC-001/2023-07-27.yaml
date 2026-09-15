@@ -1,5 +1,6 @@
 general_configuration:
   triggering__load_default_logging: false
+  triggering__use_basic_logging: true
   triggering__validate_run: false
   temporary__folder: /data/SENTINEL1/SURAT/TMP
   triggering__temporary_shared: true
