@@ -164,40 +164,47 @@ class Ingestion(EOProcessingUnit):
 
         # 5. Apply external ETAD and precise orbit auxiliary data
         adfs_list = []
-        if (adfs is not None) and (recompute is False):
-            etad_files = []
-            orbit_files = []
-            for k, v in adfs.items():
-                if "ETAD" in k:
-                    etad_files.append(get_adf(v))
-                if "ORB" in k:
-                    orbit_files.append(get_adf(v))
-
-            slcs, used_etads = import_ETAD(
-                slcs,
-                acquisition_dates,
-                etad_files,
-                wdir_path=working_directory_dynamic,
-                multiburst=multiburst,
-                storage_options=storage_options_dynamic,
-                enable_dask=enable_dask,
-            )
-            if used_etads:
-                adfs_list.append(used_etads)
-
-            slcs, used_orbits = import_ORBIT(
-                slcs,
-                acquisition_dates,
-                orbit_files,
-                wdir_path=working_directory_dynamic,
-                multiburst=multiburst,
-                storage_options=storage_options_dynamic,
-                enable_dask=enable_dask,
-            )
-            if used_orbits:
-                adfs_list.append(used_orbits)
+        
+        if (adfs is not None) and not recompute:
+            # Extract ADF paths for ETAD and ORBIT if present in the configuration
+            etad_files = [get_adf(v) for k, v in adfs.items() if "ETAD" in k]
+            orbit_files = [get_adf(v) for k, v in adfs.items() if "ORB" in k]
+        
+            # --- ETAD Processing Step ---
+            if etad_files:
+                logger.info("Executing ETAD import...")
+                slcs, used_etads = import_ETAD(
+                    slcs,
+                    acquisition_dates,
+                    etad_files,
+                    wdir_path=working_directory_dynamic,
+                    multiburst=multiburst,
+                    storage_options=storage_options_dynamic,
+                    enable_dask=enable_dask,
+                )
+                if used_etads:
+                    adfs_list.append(used_etads)
+            else:
+                logger.info("Skipping ETAD step (ADF not provided).")
+        
+            # --- External Orbit Processing Step ---
+            if orbit_files:
+                logger.info("Executing ORBIT import...")
+                slcs, used_orbits = import_ORBIT(
+                    slcs,
+                    acquisition_dates,
+                    orbit_files,
+                    wdir_path=working_directory_dynamic,
+                    multiburst=multiburst,
+                    storage_options=storage_options_dynamic,
+                    enable_dask=enable_dask,
+                )
+                if used_orbits:
+                    adfs_list.append(used_orbits)
+            else:
+                logger.info("Skipping external orbit step (ADF not provided).")
         else:
-            logger.info("Neither ETAD nor external orbits have been provided.")
+            logger.info("Skipping auxiliary data imports (recompute=True or no ADFs provided).")
 
         # 6. Finalize stack import and set reference acquisition ID
         slcs, reference_id = finalize_import(
@@ -751,6 +758,7 @@ class Coregistration(EOProcessingUnit):
 
         # 9. Image matching refinement block
         if do_image_matching:
+            logger.info("Executing image matching step...")
             slcs = finalize_coreg(
                 slcs=slcs,
                 working_directory=working_directory_reference_db_dynamic,
@@ -823,6 +831,7 @@ class Coregistration(EOProcessingUnit):
 
         # 10. Split spectrum block
         if do_split_spectrum:
+            logger.info("Executing split-spectrum step...")
             slcs = finalize_coreg(
                 slcs=slcs,
                 working_directory=working_directory_reference_db_dynamic,
@@ -854,6 +863,7 @@ class Coregistration(EOProcessingUnit):
 
         # 11. Enhanced Spectral Diversity (ESD) block
         if do_esd:
+            logger.info("Executing ESD step...")
             slcs = finalize_coreg(
                 slcs=slcs,
                 working_directory=working_directory_reference_db_dynamic,

@@ -16,9 +16,9 @@ from pathlib import Path
 
 import pytest
 import yaml
-from cop_ard_app.io import read
+import xarray as xr
 from cop_ard_core.logger import logger
-
+from cop_ard_app.io import is_local
 from cop_ard_processor.structure import check_ARD_outputs
 from cop_ard_app.utils import update_reference_database
 from scripts.run_payload import run_payload
@@ -33,12 +33,16 @@ def test_payload():
         payload = yaml.safe_load(f)
 
     output_stores = run_payload(payload, dry_run=False)
-
+    updates = {}
     for output, output_store in output_stores.items():
         logger.info(f"Checking : {output}")
         logger.info(f"Checking : {output_store}")
         storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
-        data = read(output_store["path"], storage_options=storage_opts)
+        storage_opts = is_local(output_store["path"],storage_opts)
+        data = xr.open_datatree(output_store["path"],engine="zarr",chunks={}, storage_options=storage_opts)
+        if output not in  ["cslcs","gmlp"]:
+            updates[output] = data
+            continue
         for element in data.values():
             check_ARD_outputs(element, output, logger=logger)
 
@@ -59,10 +63,9 @@ def test_payload():
             if step.get("name") == "ingestion":
                 reference_id = step.get("parameters", {}).get("reference_id")
                 break
-
         update_reference_database(
-            output_stores["current_reference"],
-            output_stores["stable_references"],
+            updates["current_reference"],
+            updates["stable_references"],
             refdb_path,
             reference_id=reference_id,
         )
