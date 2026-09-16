@@ -1,0 +1,48 @@
+# 1. Base template configuration for all nodes
+x-base-node: &base-node
+  image: localhost/cop-ard-processor:latest
+  pull_policy: missing
+  user: root
+  # Increase shared memory size to prevent OOM/bus errors with NumPy, PyArrow, and GDAL workloads
+  shm_size: "2gb"
+  volumes:
+    - /data/SENTINEL1/SURAT:/data/SENTINEL1/SURAT:z
+
+# 2. Worker template (inherits from base-node)
+x-worker-node: &worker-node
+  <<: *base-node
+  depends_on:
+    scheduler:
+      condition: service_healthy
+  deploy:
+    resources:
+      limits:
+        cpus: "4"
+        memory: 32G
+
+services:
+  scheduler:
+    <<: *base-node
+    command: dask scheduler
+    ports:
+      - "127.0.0.1:8786:8786"
+      - "127.0.0.1:8787:8787"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s = socket.socket(); s.connect(('127.0.0.1', 8786))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  worker-1:
+    <<: *worker-node
+    command: dask worker tcp://scheduler:8786 --nworkers 4 --nthreads 1 --memory-limit 8GB
+
+  worker-2:
+    <<: *worker-node
+    command: dask worker tcp://scheduler:8786 --nworkers 4 --nthreads 1 --memory-limit 8GB

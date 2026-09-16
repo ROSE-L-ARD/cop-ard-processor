@@ -1,4 +1,3 @@
-import logging
 import os
 from functools import wraps
 from typing import Any, Callable
@@ -11,13 +10,13 @@ from eopf.computing.breakpoint import TypeFunctionWritersDispatcher
 from eopf.exceptions.errors import EOConfigurationError, InvalidConfigurationError
 
 
-def _inspection_sandbox(breakpoint_data: dict, breakpoint_identifier: str, logger: logging.Logger):
+def _inspection_sandbox(breakpoint_data: dict, breakpoint_identifier: str, log_obj: Any = logger):
     try:
         import IPython
 
         IPython.embed()
     except ImportError:
-        logger.warning("IPython package not available, skipping {breakpoint_identifier} breakpoint inspection")
+        log_obj.warning(f"IPython package not available, skipping {breakpoint_identifier} breakpoint inspection")
 
 
 def resumable_breakpoint(
@@ -53,7 +52,6 @@ def resumable_breakpoint(
             *args: Any,
             **kwargs: Any,
         ) -> Any:
-            logger = logging.getLogger("eopf.breakpoint")
             activate_inspection = bool(EOConfiguration().get(f"inspections__{identifier}", default=False))
             activate_inspection |= bool(EOConfiguration().get("inspections__activate_all", default=False))
             activate_breakpoint = bool(EOConfiguration().get(f"breakpoints__{identifier}", default=False))
@@ -106,11 +104,11 @@ def resumable_breakpoint(
                 _inspection_sandbox(obj, identifier, logger)
 
             if not read_from_breakpoints or (activate_inspection and persist_inspection_outputs):
-                logger.debug(f"WRITE Breakpoint for {func_in.__name__} in {breakpoint_folder}")  # ty: ignore[unresolved-attribute]
+                logger.debug(f"WRITE Breakpoint for {func_in.__name__} in {breakpoint_folder}")  # type: ignore[unresolved-attribute]
                 try:
                     TypeFunctionWritersDispatcher.handle_value(obj, breakpoint_folder, filename_prefix)
                 except Exception as err:
-                    logger.error(err)
+                    logger.error(f"Failed to write breakpoint {identifier}: {err}")
                     raise
             return obj
 
