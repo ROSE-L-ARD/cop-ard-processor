@@ -706,7 +706,7 @@ wheels = [
 [[package]]
 name = "cop-ard-app"
 version = "0.0.1"
-source = { git = "ssh://git@github.com/bopen/cop-ard-app.git#c49a49596c9345151d194fbe5dc965010b04cca1" }
+source = { git = "ssh://git@github.com/bopen/cop-ard-app.git#6af9b5a6989fb460f6b13d695e1860f15bd0ebf3" }
 dependencies = [
     { name = "cop-ard-core" },
     { name = "dask" },

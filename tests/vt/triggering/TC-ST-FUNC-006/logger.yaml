@@ -1,0 +1,10 @@
+# Custom Logging Configuration for EOPF Override Test
+log_level: "DEBUG"   
+show_timestamps: true
+show_caller_info: true 
+
+third_party_levels:
+  eopf: "DEBUG"
+  dask: "ERROR"
+  distributed: "CRITICAL"
+  urllib3: "WARNING"

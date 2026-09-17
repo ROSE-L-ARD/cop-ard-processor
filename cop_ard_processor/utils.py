@@ -270,10 +270,15 @@ def get_instrument_mode(in_files: list[str]):
         if "ROSEL" in search_upper:
             return "ROSEL"
 
-        # Check standard Sentinel-1 acquisition modes
-        for mode in ["IW", "EW", "SM"]:
-            if mode in search_upper:
+        # Check for standard modes (IW, EW)
+        for mode in ["IW", "EW"]:
+            if f"_{mode}_" in search_upper:
                 return mode
+        
+        # Check for StripMap (SM) modes, which use beam identifiers S1 through S6
+        stripmap_beams = ["S1", "S2", "S3", "S4", "S5", "S6"]
+        if any(f"_{beam}_" in search_upper for beam in stripmap_beams):
+            return "SM"
 
         raise ValueError(f"Unable to identify a valid instrument mode or sensor from input: '{search_string}'")
 
