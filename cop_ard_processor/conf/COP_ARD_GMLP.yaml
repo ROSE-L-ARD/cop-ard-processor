@@ -226,24 +226,107 @@ attributes:
     id: {}
 
   processing_history:
-    "COP ARD CSLC Product":
-      LIST0:
-        adfs: {}
-        inputs: {}
-        facility: {}
-        outputs: {}
-        processor: {}
-        time: {}
-        version: {}
     "COP ARD GMLP Product":
       LIST0:
-        adfs: {}
-        inputs: {}
-        facility: {}
-        outputs: {}
         processor: {}
-        time: {}
         version: {}
+        facility: {}
+        time: {}
+        inputs: {}
+        outputs: {}
+        adfs: {}
+        execution_parameters:
+          mode: {}
+          multiburst: {}
+          enable_dask: {}
+          recompute: {}
+          reference_id: {}
+          chunks_radar_grid: {}
+          polarization: {}
+          deramp: {}
+          noise_removal: {}
+          apply_invalid_mask: {}
+          measurement_type: {}
+          indices: {}
+
+      LIST1:
+        processor: {}
+        version: {}
+        facility: {}
+        time: {}
+        inputs: {}
+        outputs: {}
+        adfs: {}
+        execution_parameters:
+          recompute: {}
+          dem_type: {}
+          chunks_geo_grid: {}
+          dem_interpolation: {}
+          dem_spacing: {}
+          dem_crs: {}
+
+      LIST2:
+        processor: {}
+        version: {}
+        facility: {}
+        time: {}
+        inputs: {}
+        outputs: {}
+        adfs: {}
+        execution_parameters:
+          enable_dask: {}
+          chunks_geo_grid: {}
+
+      LIST3:
+        processor: {}
+        version: {}
+        facility: {}
+        time: {}
+        inputs: {}
+        outputs: {}
+        adfs: {}
+        execution_parameters:
+          initialize_current_reference: {}
+          enable_image_matching: {}
+          enable_split_spectrum: {}
+          enable_esd: {}
+          recompute: {}
+          enable_dask: {}
+          chunks_geo_grid: {}
+          do_flattening: {}
+          do_reramp: {}
+          ov_fact_low_acc: {}
+          kernel_shape_low_acc: {}
+          kaiser_beta_low_acc: {}
+          ov_fact_high_acc: {}
+          kernel_shape_high_acc: {}
+          kaiser_beta_high_acc: {}
+          image_matching_degree: {}
+          coherence_threshold_image_matching: {}
+          coherence_threshold_split_spectrum: {}
+          matching_kernel_shape: {}
+          wsize: {}
+          wstep: {}
+          wsearch: {}
+          dim: {}
+          block_size: {}
+          bandwidth: {}
+          frequency_offset: {}
+          multilook_split_spectrum: {}
+          esd_poly_degree: {}
+          split_spectrum_poly_degree: {}
+          height_ionosphere: {}
+          reference_id: {}
+          atbd_link: {}
+          facility: {}
+          product_timeliness: {}
+          product_timeliness_category: {}
+          product_data_access: {}
+          product_pixel_coordinate_convention: {}
+          product_family_specification: {}
+          cslc_status: {}
+          providers: {}
+          coregistration_polynomials: {}
 
   other_metadata:
     product_data_access: {}

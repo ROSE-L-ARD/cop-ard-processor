@@ -5,6 +5,11 @@ general_configuration:
   triggering__temporary_shared: true
   breakpoints__activate_all: false
   logging__custom_config: ./logger.yaml
+breakpoints: 
+  all : false 
+  ids:
+  - cmlp
+  folder: /data/SENTINEL1/SURAT/TMP/breakpoints/TC-ST-FUNC-007
 workflow:
   - name: ingestion
     module: cop_ard_processor.processing_units
@@ -47,19 +52,32 @@ workflow:
       REFDB: REFDB
     parameters:
       initialize_current_reference: true
-  - name: reference_update
+  - name: cmlp
     module: cop_ard_processor.processing_units
-    processing_unit: ReferenceUpdate
+    processing_unit: CMLP
     inputs:
       slcs: coregistration.slcs
-      dem: reference_dem.dem
-      simulation_ref: reference_geometry.simulation_ref
-      simulation_ml: reference_geometry.simulation_ml
+    parameters:
+      posting: { "azimuth_time": 4, "slant_range_time": 12 }
     adfs:
       REFDB: REFDB
     outputs:
       current_reference: current_reference
       stable_references: stable_references
+  - name: geocoding
+    module: cop_ard_processor.processing_units
+    processing_unit: Geocoding
+    inputs:
+      cmlp: cmlp.cmlp
+      slcs: coregistration.slcs
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    parameters:
+      spacing: {x: 50, y: 50}
+    adfs:
+      REFDB: REFDB
+    outputs:
+      gmlp: gmlp
 io:
   adfs:
     - id: REFDB
