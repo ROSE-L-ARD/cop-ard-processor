@@ -8,7 +8,7 @@ general_configuration:
 breakpoints: 
   all : false 
   ids:
-  - cmlp
+  - CMLP
   folder: /data/SENTINEL1/SURAT/TMP/breakpoints/TC-ST-FUNC-007
 workflow:
   - name: ingestion

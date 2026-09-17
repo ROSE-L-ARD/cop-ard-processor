@@ -12,138 +12,122 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 from pathlib import Path
 
 import pytest
+import rioxarray
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
+from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
+from pyproj import CRS
 from structlog.testing import capture_logs
 
 from cop_ard_processor.structure import check_ARD_outputs
 from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
-yaml_path_part1 = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-003" / "2023-08-08-part-1.yaml"
-yaml_path_part2 = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-003" / "2023-08-08-part-2.yaml"
+yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-007" / "2023-08-08.yaml"
 
 
 @pytest.mark.ard
 def test_payload():
-    """E2E Functional Test TC-ST-FUNC-003: CSLC IW mode (ETAD + ESD + Breakpointing Lifecycle)."""
+    """E2E Functional Test TC-ST-FUNC-007: GMLP IW mode (Naples) with specific posting and spacing dicts."""
+    with open(yaml_path, encoding="utf-8") as f:
+        payload = yaml.safe_load(f)
 
-    with open(yaml_path_part1, encoding="utf-8") as f:
-        payload_part1 = yaml.safe_load(f)
+    # 1. Execution & Log Capture Phase
+    with capture_logs() as captured:
+        output_stores = run_payload(payload, dry_run=False)
+        updates = {}
 
-    with open(yaml_path_part2, encoding="utf-8") as f:
-        payload_part2 = yaml.safe_load(f)
+        # 2. Output Validation Phase
+        for output, output_store in output_stores.items():
+            logger.info(f"Checking output store: {output}")
+            logger.info(f"Store metadata: {output_store}")
 
-    bp_folder_str = payload_part1.get("general_configuration", {}).get("breakpoints__folder")
-    intermediate_dir = Path(bp_folder_str) if bp_folder_str else Path("./breakpoints")
+            storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
+            storage_opts = is_local(output_store["path"], storage_opts)
 
-    # 1. Phase 1: Execution up to the breakpoint (writes Ingestion breakpoint)
-    logger.info("Starting Phase 1: Executing part 1 (populating breakpoints)...")
-    with capture_logs() as captured_phase1:
-        try:
-            run_payload(payload_part1, dry_run=False)
-        except SystemExit as e:
-            assert e.code in (0, None), f"Phase 1 terminated with an unexpected exit code: {e.code}"
+            data = xr.open_datatree(
+                output_store["path"],
+                engine="zarr",
+                chunks={},
+                storage_options=storage_opts,
+            )
 
-    assert intermediate_dir.exists(), f"Pass Criteria Failed: Intermediate folder '{intermediate_dir}' not found."
-    intermediate_files = list(intermediate_dir.glob("**/*"))
-    assert len(intermediate_files) > 0, (
-        f"Pass Criteria Failed: No intermediate files found in '{intermediate_dir}' after Phase 1."
-    )
+            if output not in ["cslcs", "gmlp"]:
+                updates[output] = data
+                continue
 
-    # 2. Phase 2: Resume processing from saved breakpoint
-    logger.info("Starting Phase 2: Resuming workflow using part 2...")
-    with capture_logs() as captured_phase2:
-        try:
-            output_stores = run_payload(payload_part2, dry_run=False)
-        except SystemExit as e:
-            assert e.code in (0, None), f"Phase 2 terminated with an unexpected exit code: {e.code}"
+            for element in data.values():
+                check_ARD_outputs(element, output, logger=logger)
 
-    captured_events_phase1 = [str(log.get("event", "")) for log in captured_phase1]
-    captured_events_phase2 = [str(log.get("event", "")) for log in captured_phase2]
-    all_captured_events = captured_events_phase1 + captured_events_phase2
-    captured_logs_text = "\n".join(all_captured_events)
-    captured_phase2_text = "\n".join(captured_events_phase2)
+                # Verify single-polarization isolation for GMLP Phase measurement
+                if output == "gmlp":
+                    pols = set(element.measurements.phase.polarization.values.astype(str))
+                    assert pols == {"VV"}, (
+                        f"Pass Criteria Failed: Single-polarization check failed for GMLP product. "
+                        f"Expected strictly {{'VV'}}, but found: {pols}"
+                    )
+                    assert CRS(element.measurements.to_dataset().phase.rio.crs).to_2d().to_string() == "EPSG:32755"
+    captured_events = [str(log.get("event", "")) for log in captured]
+    captured_logs_text = "\n".join(captured_events)
 
-    # 3. Output Validation Phase
-    for output, output_store in output_stores.items():
-        logger.info(f"Checking output store: {output}")
-        logger.info(f"Store metadata: {output_store}")
-
-        storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
-        storage_opts = is_local(output_store["path"], storage_opts)
-
-        data = xr.open_datatree(
-            output_store["path"],
-            engine="zarr",
-            chunks={},
-            storage_options=storage_opts,
-        )
-
-        if output not in ["cslcs", "gmlp"]:
-            continue
-
-        for element in data.values():
-            check_ARD_outputs(element, output, logger=logger)
-
-            if output == "cslcs":
-                pols = set(element.measurements.cslc.polarization.values.astype(str))
-                assert pols == {"VV"}, (
-                    f"Pass Criteria Failed: Single-polarization check failed for CSLC product. "
-                    f"Expected strictly {{'VV'}}, but found: {pols}"
-                )
-
-    # 4. Logs and Requirements Verification
-
-    # Verify Breakpoint Recovery log generated by @resumable_breakpoint
-    expected_breakpoint_log = "found, skipping execution"
-    assert any(expected_breakpoint_log in event for event in captured_events_phase2), (
-        f"Pass Criteria Failed: Decorator log '{expected_breakpoint_log}' was not captured in Phase 2.\n"
-        f"Captured Phase 2 log events:\n{captured_phase2_text}"
-    )
-
-    # Explicit unit-level check for Ingestion breakpoint recovery
-    assert any(
-        "Breakpoint files for Ingestion found, skipping execution" in event for event in captured_events_phase2
-    ), (
-        f"Pass Criteria Failed: Specific log 'Breakpoint files for Ingestion found, skipping execution' "
-        f"was not found in Phase 2 execution logs.\nCaptured Phase 2 events:\n{captured_phase2_text}"
-    )
-
-    # Verify ETAD Execution
-    assert not any("Skipping ETAD step" in event for event in all_captured_events), (
-        "Pass Criteria Failed: ETAD step was skipped when it should have been explicitly processed."
-    )
-    assert any("ETAD" in event for event in all_captured_events), (
-        f"Pass Criteria Failed: ETAD execution trace was not found in captured logs.\n{captured_logs_text}"
-    )
-
-    # Verify Enhanced Spectral Diversity (ESD) Execution
-    assert any("Executing ESD step..." in event for event in all_captured_events), (
-        f"Pass Criteria Failed: The ESD algorithm execution log was not found.\nCaptured events:\n{captured_logs_text}"
-    )
-    assert not any("Skipping ESD step" in event for event in all_captured_events), (
-        "Pass Criteria Failed: The ESD step was skipped instead of being executed."
-    )
-
-    # Verify Optional Steps Bypass (Image Matching, Split-Spectrum)
-    bypassed_steps = ["image matching", "split spectrum"]
-    for step in bypassed_steps:
-        expected_skip_log = f"Skipping {step} step"
-        assert any(expected_skip_log in event for event in all_captured_events), (
-            f"Pass Criteria Failed: Mandatory skip trace '{expected_skip_log}' was not found in execution logs.\n"
+    # 3. Mandatory Processing Units Verification for GMLP Pipeline
+    mandatory_units = [
+        "Ingestion Unit",
+        "ReferenceDEM Unit",
+        "ReferenceGeometry Unit",
+        "Coregistration Unit",
+        "CMLP Unit",
+        "Geocoding Unit",
+    ]
+    for unit in mandatory_units:
+        expected_trace = f"Started : {unit}"
+        assert any(expected_trace in event for event in captured_events), (
+            f"Pass Criteria Failed: Mandatory log trace '{expected_trace}' was not found in captured execution logs.\n"
             f"Captured events:\n{captured_logs_text}"
         )
 
-    # Verify High-Verbosity DEBUG Logging
-    has_debug_logs = any(
-        log.get("log_level") == "debug" or log.get("level") == "debug" for log in captured_phase1 + captured_phase2
+    # 4. Extract and verify specific pipeline parameters (Posting, Spacing, CRS)
+    posting_found = False
+    spacing_found = False
+
+    for log in captured:
+        # Uniform the string representation to handle spaces and quotes cleanly
+        log_str = str(log).replace(" ", "").replace("'", '"')
+
+        # Check posting dictionary -> expected keys azimuth_time and slant_range_time
+        if '"posting":' in log_str and '"azimuth_time":' in log_str and '"slant_range_time":' in log_str:
+            posting_found = True
+
+        # Check spacing dictionary -> expected keys x and y with value 50
+        if '"spacing":' in log_str and '"x":50' in log_str and '"y":50' in log_str:
+            spacing_found = True
+
+    assert posting_found, (
+        f"Pass Criteria Failed: The required 'posting' dictionary (with azimuth_time and slant_range_time) was not found in logs.\n"
+        f"Captured logs:\n{captured_logs_text}"
     )
-    assert has_debug_logs or len(captured_phase1 + captured_phase2) > 0, (
-        "Pass Criteria Failed: Extended diagnostic logs in DEBUG mode were not generated."
+
+    assert spacing_found, (
+        f"Pass Criteria Failed: The required 'spacing' dictionary (with x=50, y=50) was not found in logs.\n"
+        f"Captured logs:\n{captured_logs_text}"
     )
+
+    # 6. Optional Steps Bypass Verification
+    bypassed_steps = [
+        "external orbit",
+        "image matching",
+        "split spectrum",
+        "ESD",
+    ]
+    for step in bypassed_steps:
+        expected_skip_log = f"Skipping {step} step"
+        assert any(expected_skip_log in event for event in captured_events), (
+            f"Pass Criteria Failed: Mandatory skip trace '{expected_skip_log}' was not found in execution logs.\n"
+            f"Captured events:\n{captured_logs_text}"
+        )

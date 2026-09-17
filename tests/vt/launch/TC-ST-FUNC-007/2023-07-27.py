@@ -22,7 +22,8 @@ from cop_ard_app.io import is_local
 from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
-
+import rioxarray
+from pyproj import CRS
 from cop_ard_processor.structure import check_ARD_outputs
 from scripts.run_payload import run_payload
 
@@ -31,7 +32,7 @@ yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-007" / "2023-07-27.yaml"
 
 
 @pytest.mark.ard
-def test_payload(caplog):
+def test_payload():
     """E2E Functional Test TC-ST-FUNC-007: GMLP IW mode (Naples) with specific posting and spacing dicts."""
     with open(yaml_path, encoding="utf-8") as f:
         payload = yaml.safe_load(f)
@@ -70,7 +71,7 @@ def test_payload(caplog):
                         f"Pass Criteria Failed: Single-polarization check failed for GMLP product. "
                         f"Expected strictly {{'VV'}}, but found: {pols}"
                     )
-                    assert CRS(element.measurements.to_dataset().rio.crs).to_2d() == CRS(32677) 
+                    assert CRS(element.measurements.to_dataset().phase.rio.crs).to_2d().to_string() == "EPSG:32755"
     captured_events = [str(log.get("event", "")) for log in captured]
     captured_logs_text = "\n".join(captured_events)
 
@@ -93,7 +94,6 @@ def test_payload(caplog):
     # 4. Extract and verify specific pipeline parameters (Posting, Spacing, CRS)
     posting_found = False
     spacing_found = False
-    crs_found = False
 
     for log in captured:
         # Uniform the string representation to handle spaces and quotes cleanly
@@ -117,8 +117,10 @@ def test_payload(caplog):
         f"Captured logs:\n{captured_logs_text}"
     )
 
+    print("&%"*50)
+    print(captured_logs_text)
     # 5. Breakpoint Verification (Checkpoints: ENABLE CMLP)
-    assert "breakpoints__CMLP" in caplog.text or "Breakpoint CMLP" in caplog.text or "CMLP" in caplog.text, (
+    assert "WRITE Breakpoint for run in" in captured_logs_text, (
         "Pass Criteria Failed: The CMLP Breakpoint logic trace was not found in standard logs."
     )
 

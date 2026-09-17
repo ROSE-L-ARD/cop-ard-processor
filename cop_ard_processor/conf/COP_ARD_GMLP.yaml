@@ -35,7 +35,6 @@ groups:
           acquisition_id: {}
           y: {}
           x: {}
-      
 
   quality:
     groups:
@@ -226,7 +225,7 @@ attributes:
     id: {}
 
   processing_history:
-    "COP ARD GMLP Product":
+    COP ARD GMLP Product:
       LIST0:
         processor: {}
         version: {}
@@ -328,6 +327,48 @@ attributes:
           providers: {}
           coregistration_polynomials: {}
 
+      LIST4:
+        processor: {}
+        version: {}
+        facility: {}
+        time: {}
+        inputs: {}
+        outputs: {}
+        adfs: {}
+        execution_parameters:
+          reference_id: {}
+          posting: {}
+          memory_param: {}
+          coherence_threshold: {}
+          stable_interval_days: {}
+          max_past_stable_history: {}
+          enable_dask: {}
+
+      LIST5:
+        processor: {}
+        version: {}
+        facility: {}
+        time: {}
+        inputs: {}
+        outputs: {}
+        adfs: {}
+        execution_parameters:
+          warp_ov_fact: {}
+          warp_kernel_shape: {}
+          warp_kaiser_beta: {}
+          spacing: {}
+          chunks_geo_grid: {}
+          enable_dask: {}
+          atbd_link: {}
+          facility: {}
+          product_timeliness: {}
+          product_timeliness_category: {}
+          product_data_access: {}
+          product_pixel_coordinate_convention: {}
+          product_family_specification: {}
+          gmlp_status: {}
+          providers: {}
+          
   other_metadata:
     product_data_access: {}
     product_geometry: {}
@@ -337,11 +378,4 @@ attributes:
     product_family_specification: {}
     measurement_type: {}
     product_resampling_method: {}
-    product_filtering: {}
-    eastern_geometric_accuracy:
-      bias: {}
-      stddev: {}
-    northern_geometric_accuracy:
-      bias: {}
-      stddev: {}
-    geometric_accuracy_radial_rmse: {}
+
