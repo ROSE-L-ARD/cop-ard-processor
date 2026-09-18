@@ -1,0 +1,104 @@
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__validate_run: false
+  temporary__folder: /data/SENTINEL1/MOROCCO/TMP/TC-ST-FUNC-009
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+  logging__custom_config: ./logger.yaml
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+    parameters:
+      input_slcs_files: [/data/SENTINEL1/MOROCCO/SAFE/S1B_S3_SLC__1SSV_20210619T070345_20210619T070410_027422_034668_1E3B.SAFE]
+      indices: null
+      reference_id: S1B_2021-06-07T07:03:41.476057
+  - name: reference_dem
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceDEM
+    inputs:
+      slcs: ingestion.slcs
+    adfs:
+      DEM: DEM
+      REFDB: REFDB
+  - name: reference_geometry
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceGeometry
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+    adfs:
+      REFDB: REFDB
+  - name: coregistration
+    module: cop_ard_processor.processing_units
+    processing_unit: Coregistration
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    parameters:
+      enable_image_matching: false
+      enable_split_spectrum: false
+      enable_esd: false
+    adfs:
+      REFDB: REFDB
+  - name: cmlp
+    module: cop_ard_processor.processing_units
+    processing_unit: CMLP
+    inputs:
+      slcs: coregistration.slcs
+    parameters:
+      posting: { "azimuth_time": 10, "slant_range_time": 10 }
+    adfs:
+      REFDB: REFDB
+    outputs:
+      current_reference: current_reference
+      stable_references: stable_references
+  - name: geocoding
+    module: cop_ard_processor.processing_units
+    processing_unit: Geocoding
+    inputs:
+      cmlp: cmlp.cmlp
+      slcs: coregistration.slcs
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    parameters:
+      spacing: {x: 50, y: 50}
+    adfs:
+      REFDB: REFDB
+    outputs:
+      gmlp: gmlp
+io:
+  adfs:
+    - id: REFDB
+      path: /data/SENTINEL1/MOROCCO/WDIR/TC-ST-FUNC-009/REFDB
+    - id: DEM
+      path: /data/SENTINEL1/MOROCCO/dem
+  output_products:
+    - id: gmlp
+      path: /data/SENTINEL1/MOROCCO/EOPF/OUTPUT/TC-ST-FUNC-009/GMLP/gmlp_2021-06-19.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: current_reference
+      path: /data/SENTINEL1/MOROCCO/EOPF/OUTPUT/TC-ST-FUNC-009/CURRENT_REFERENCE/current_reference_2021-06-19.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: stable_references
+      path: /data/SENTINEL1/MOROCCO/EOPF/OUTPUT/TC-ST-FUNC-009/STABLE_REFERENCES/stable_reference_2021-06-19.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 16
+    threads_per_worker: 1
+    memory_limit: 0
