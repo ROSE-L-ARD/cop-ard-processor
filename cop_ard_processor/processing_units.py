@@ -165,12 +165,12 @@ class Ingestion(EOProcessingUnit):
 
         # 5. Apply external ETAD and precise orbit auxiliary data
         adfs_list = []
-        
+
         if (adfs is not None) and not recompute:
             # Extract ADF paths for ETAD and ORBIT if present in the configuration
             etad_files = [get_adf(v) for k, v in adfs.items() if "ETAD" in k]
             orbit_files = [get_adf(v) for k, v in adfs.items() if "ORB" in k]
-        
+
             # --- ETAD Processing Step ---
             if etad_files:
                 logger.info("Executing ETAD import...")
@@ -187,7 +187,7 @@ class Ingestion(EOProcessingUnit):
                     adfs_list.append(used_etads)
             else:
                 logger.info("Skipping ETAD step (ADF not provided).")
-        
+
             # --- External Orbit Processing Step ---
             if orbit_files:
                 logger.info("Executing ORBIT import...")
@@ -399,7 +399,7 @@ class ReferenceGeometry(EOProcessingUnit):
         return ["REFDB"]
 
     @log_time("ReferenceGeometry Unit", logger)
-    @resumable_breakpoint(identifier="ReferenceGeometry")
+    @resumable_breakpoint(identifier="ReferenceGeometry", expected_outputs=2)
     def run(self, inputs, adfs=None, **kwargs):
         """Generates the reference geometry
 
@@ -548,7 +548,7 @@ class Coregistration(EOProcessingUnit):
         return ["REFDB"]
 
     @log_time("Coregistration Unit", logger)
-    @resumable_breakpoint(identifier="Coregistration")
+    @resumable_breakpoint(identifier="Coregistration", expected_outputs=2)
     def run(self, inputs, adfs=None, **kwargs):
         """Coregisters the SLC stack to the reference geometry.
 
@@ -933,7 +933,7 @@ class ReferenceUpdate(EOProcessingUnit):
         return ["REFDB"]
 
     @log_time("ReferenceUpdate Unit", logger)
-    @resumable_breakpoint(identifier="ReferenceUpdate")
+    @resumable_breakpoint(identifier="ReferenceUpdate", expected_outputs=2)
     def run(self, inputs, adfs=None, **kwargs):
         """Executes reference update stack calculations and persists updated reference data.
 
@@ -1018,7 +1018,6 @@ class ReferenceUpdate(EOProcessingUnit):
             reference_id=reference_id,
         )
 
-
         # 8. Register step metadata in EOPF processing history
         current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         facility = kwargs.get("facility", config.get("Global", {}).get("facility", "ESA-Copernicus Ground Segment"))
@@ -1061,7 +1060,7 @@ class CMLP(EOProcessingUnit):
         return ["REFDB"]
 
     @log_time("CMLP Unit", logger)
-    @resumable_breakpoint(identifier="CMLP")
+    @resumable_breakpoint(identifier="CMLP", expected_outputs=3)
     def run(self, inputs, adfs=None, **kwargs):
         """Executes the CMLP stack processing and updates the reference database.
 
@@ -1149,7 +1148,6 @@ class CMLP(EOProcessingUnit):
         )
 
         logger.debug(f"stable_reference: {stable_references}")
-
 
         # 8. Register step metadata in EOPF processing history
         current_time = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

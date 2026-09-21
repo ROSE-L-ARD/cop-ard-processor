@@ -284,8 +284,8 @@
     "ReferenceDEM": {
       "interpolation": "cubic",
       "spacing": {
-        "x": 10,
-        "y": 10
+        "x": 30,
+        "y": 30
       }
     },
     "Coregistration": {

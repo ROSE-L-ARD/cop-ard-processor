@@ -20,6 +20,7 @@ import yaml
 from cop_ard_app.io import is_local
 from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
+from pyproj import CRS
 from structlog.testing import capture_logs
 
 from cop_ard_processor.structure import check_ARD_outputs
@@ -101,7 +102,7 @@ def test_payload():
         f"Pass Criteria Failed: The required 'posting' dictionary (with azimuth_time and slant_range_time) was not found in logs.\n"
         f"Captured logs:\n{captured_logs_text}"
     )
-    
+
     assert spacing_found, (
         f"Pass Criteria Failed: The required 'spacing' dictionary (with x=50, y=50) was not found in logs.\n"
         f"Captured logs:\n{captured_logs_text}"
@@ -144,3 +145,4 @@ def test_payload():
             f"{refdb_path}/reference_db_dynamic",
             reference_id=reference_id,
         )
+

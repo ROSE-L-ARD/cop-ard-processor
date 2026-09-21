@@ -68,7 +68,6 @@ def resumable_breakpoint(
                 if activate_inspection:
                     _inspection_sandbox(obj, identifier, logger)
                 return obj
-
             if breakpoint_path:
                 breakpoint_storage_options = (
                     breakpoint_storage_options if breakpoint_storage_options is not None else {}
@@ -86,7 +85,7 @@ def resumable_breakpoint(
                 obj = {}
                 for file in matching_files:
                     filename = file.basename.removeprefix(filename_prefix)
-                    key = filename.split("_")[0]
+                    key = filename.removesuffix("_None.zarr")
                     obj[key] = xr.open_datatree(file.to_zarr_store(), chunks={}, engine="zarr")  # type: ignore
                 for optional_output in optional_outputs:
                     if optional_output not in obj:
