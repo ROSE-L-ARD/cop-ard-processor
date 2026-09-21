@@ -48,8 +48,6 @@ workflow:
       enable_image_matching: false
       enable_split_spectrum: false
       enable_esd: true
-    outputs:
-      cslcs: cslcs
   - name: cmlp
     module: cop_ard_processor.processing_units
     processing_unit: CMLP
@@ -57,9 +55,6 @@ workflow:
       slcs: coregistration.slcs
     adfs:
       REFDB: REFDB
-    outputs:
-      current_reference: current_reference
-      stable_references: stable_references
   - name: geocoding
     module: cop_ard_processor.processing_units
     processing_unit: Geocoding
@@ -70,8 +65,6 @@ workflow:
       simulation_ml: reference_geometry.simulation_ml
     adfs:
       REFDB: REFDB
-    outputs:
-      gmlp: gmlp
 io:
   adfs:
     - id: REFDB
@@ -80,31 +73,6 @@ io:
       path: /data/SENTINEL1/SURAT/dem
     - id: ETAD
       path: /data/SENTINEL1/SURAT/ETAD/S1A_IW_ETA__AXDV_20230808T084125_20230808T084152_049781_05FC83_2F44.SAFE
-  output_products:
-    - id: cslcs
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-PERF-002/CSLC/gmlp_2023-08-08.zarr
-      engine: cpm_zarr
-      type: file
-      writer_params:
-        mode: "w"
-    - id: gmlp
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-PERF-002/GMLP/gmlp_2023-08-08.zarr
-      engine: cpm_zarr
-      type: file
-      writer_params:
-        mode: "w"
-    - id: current_reference
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-PERF-002/CURRENT_REFERENCE/current_reference_2023-08-08.zarr
-      engine: cpm_zarr
-      type: file
-      writer_params:
-        mode: "w"
-    - id: stable_references
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-PERF-002/STABLE_REFERENCES/stable_reference_2023-08-08.zarr
-      engine: cpm_zarr
-      type: file
-      writer_params:
-        mode: "w"
 dask_context:
   cluster_type: local
   cluster_config:

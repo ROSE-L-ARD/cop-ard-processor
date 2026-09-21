@@ -1,7 +1,7 @@
 general_configuration:
   triggering__load_default_logging: false
   triggering__use_basic_logging: true
-  temporary__folder: /data/SENTINEL1/SURAT/TMP/TC-ST-PERF-001
+  temporary__folder: /data/SENTINEL1/NAPLES/TMP/TC-ST-PERF-001
   triggering__temporary_shared: true
   logging__custom_config: ./logger.yaml
 workflow:
@@ -10,11 +10,10 @@ workflow:
     processing_unit: Ingestion
     adfs:
       REFDB: REFDB
-      ETAD: ETAD
     parameters:
       input_slcs_files:
         [
-          /data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230808T084125_20230808T084152_049781_05FC83_76A9.SAFE,
+          /data/SENTINEL1/NAPLES/SAFE/S1A_IW_SLC__1SDV_20200620T050341_20200620T050409_033096_03D588_013B.SAFE
         ]
       indices: [27, 28]
       polarization: ["VV"]
@@ -75,32 +74,32 @@ workflow:
 io:
   adfs:
     - id: REFDB
-      path: /data/SENTINEL1/SURAT/WDIR/TC-ST-PERF-001/REFDB
+      path: /data/SENTINEL1/NAPLES/WDIR/TC-ST-PERF-001/REFDB
     - id: DEM
-      path: /data/SENTINEL1/SURAT/dem
+      path: /data/SENTINEL1/NAPLES/dem
     - id: ETAD
-      path: /data/SENTINEL1/SURAT/ETAD/S1A_IW_ETA__AXDV_20230808T084125_20230808T084152_049781_05FC83_2F44.SAFE
+      path: /data/SENTINEL1/NAPLES/ETAD/S1A_IW_ETA__AXDV_20230808T084125_20230808T084152_049781_05FC83_2F44.SAFE
   output_products:
     - id: cslcs
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-PERF-001/CSLC/gmlp_2023-08-08.zarr
+      path: /data/SENTINEL1/NAPLES/EOPF/OUTPUT/TC-ST-PERF-001/CSLC/gmlp_2023-08-08.zarr
       engine: cpm_zarr
       type: file
       writer_params:
         mode: "w"
     - id: gmlp
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-PERF-001/GMLP/gmlp_2023-08-08.zarr
+      path: /data/SENTINEL1/NAPLES/EOPF/OUTPUT/TC-ST-PERF-001/GMLP/gmlp_2023-08-08.zarr
       engine: cpm_zarr
       type: file
       writer_params:
         mode: "w"
     - id: current_reference
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-PERF-001/CURRENT_REFERENCE/current_reference_2023-08-08.zarr
+      path: /data/SENTINEL1/NAPLES/EOPF/OUTPUT/TC-ST-PERF-001/CURRENT_REFERENCE/current_reference_2023-08-08.zarr
       engine: cpm_zarr
       type: file
       writer_params:
         mode: "w"
     - id: stable_references
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-PERF-001/STABLE_REFERENCES/stable_reference_2023-08-08.zarr
+      path: /data/SENTINEL1/NAPLES/EOPF/OUTPUT/TC-ST-PERF-001/STABLE_REFERENCES/stable_reference_2023-08-08.zarr
       engine: cpm_zarr
       type: file
       writer_params:
