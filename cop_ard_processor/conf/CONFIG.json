@@ -51,7 +51,7 @@
       "polarization": null,
       "indices": null,
       "deramp": true,
-      "noise_removal": true,
+      "noise_removal": false,
       "apply_invalid_mask": true,
       "calibration_type": "BetaZero"
     },
@@ -164,7 +164,7 @@
       "polarization": null,
       "indices": null,
       "deramp": true,
-      "noise_removal": true,
+      "noise_removal": false,
       "apply_invalid_mask": true,
       "calibration_type": "BetaZero"
     },
@@ -277,7 +277,7 @@
       "polarization": null,
       "indices": null,
       "deramp": true,
-      "noise_removal": true,
+      "noise_removal": false,
       "apply_invalid_mask": true,
       "calibration_type": "BetaZero"
     },
@@ -389,7 +389,7 @@
       "polarization": null,
       "indices": null,
       "deramp": true,
-      "noise_removal": true,
+      "noise_removal": false,
       "apply_invalid_mask": true,
       "calibration_type": "BetaZero"
     },
