@@ -309,8 +309,8 @@
       "wsearch": [5, 5],
       "dim": [1, 1],
       "block_size": 10,
-      "bandwidth": 7e6,
-      "frequency_offset": 4.5e6,
+      "bandwidth": 16e6,
+      "frequency_offset": 10e6,
       "multilook_split_spectrum": {
         "azimuth_time": 64,
         "slant_range_time": 32
