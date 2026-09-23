@@ -88,12 +88,10 @@ class Ingestion(EOProcessingUnit):
         input_slcs_files = kwargs.get("input_slcs_files")
         if input_slcs_files is None:
             raise ValueError("input_slcs_files must be provided via processing parameters (kwargs).")
-        logger.debug(f"TEST LOG DEBUG")
-        logger.info(f"TEST LOG INFO")
         # 1. Resolve instrument mode and baseline configuration
         mode = get_instrument_mode(input_slcs_files)
         config = get_config(mode)
-        multiburst = mode in ["IW", "EW"]
+        multiburst = mode in ["IW", "EW", "ROSEL"]
 
         # 2. Extract execution parameters from kwargs and default configs
         enable_dask = kwargs.get("enable_dask", True)

@@ -1,0 +1,51 @@
+general_configuration:
+  triggering__validate_run: false
+  temporary__folder: /data/ROSEL/GPP_007/TMP/TC-ST-FUNC-011
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+  logging__custom_config: ./logger.yaml
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+    parameters:
+      input_slcs_files: [/data/ROSEL/GPP_007/iSLC/primary/iSLC]
+      recompute: true
+  - name: reference_dem
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceDEM
+    inputs:
+      slcs: ingestion.slcs
+    adfs:
+      DEM: DEM
+      REFDB: REFDB
+    parameters:
+      recompute: true
+  - name: reference_geometry
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceGeometry
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+    adfs:
+      REFDB: REFDB
+    parameters:
+      recompute: true
+io:
+  adfs:
+    - id: REFDB
+      path: /data/ROSEL/GPP_007/WDIR/TC-ST-FUNC-011/REFDB
+    - id: DEM
+      path: /data/ROSEL/GPP_007/dem
+  output_products:
+    - id: /not_used
+      path: /not_used.zarr
+      store_type: zarr
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 6
+    threads_per_worker: 1
+    memory_limit: 0

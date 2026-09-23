@@ -706,7 +706,7 @@ wheels = [
 [[package]]
 name = "cop-ard-app"
 version = "0.0.1"
-source = { git = "ssh://git@github.com/bopen/cop-ard-app.git#7530486996b79e21f134fc38a3b2158a903e0d34" }
+source = { git = "ssh://git@github.com/bopen/cop-ard-app.git#de0b79488f8ca38566614d8fb1b2d3d7c7810cf7" }
 dependencies = [
     { name = "cop-ard-core" },
     { name = "dask" },
@@ -716,7 +716,7 @@ dependencies = [
 [[package]]
 name = "cop-ard-core"
 version = "0.0.1"
-source = { git = "ssh://git@github.com/bopen/cop-ard-core.git#76f4f11f90be72507088e4d51441f39d60e1e007" }
+source = { git = "ssh://git@github.com/bopen/cop-ard-core.git#62a00612c853144f4a4c098d24444842dfa2cfe6" }
 dependencies = [
     { name = "astropy" },
     { name = "dask" },

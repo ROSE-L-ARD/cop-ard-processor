@@ -60,6 +60,7 @@ groups:
             dimensions:
               azimuth_time: {}
           polarization:
+            optional: true
             dimensions:
               polarization: {}
           acquisition_date:
@@ -70,6 +71,7 @@ groups:
               acquisition_id: {}
         data_variables:
           beta0:
+            optional: true
             dimensions:
               acquisition_id: {}
               slant_range_time: {}
@@ -80,23 +82,27 @@ groups:
               azimuth_time: {}
               slant_range_time: {}
           gamma0:
+            optional: true
             dimensions:
               polarization: {}
               acquisition_id: {}
               slant_range_time: {}
               azimuth_time: {}
           noise:
+            optional: true
             dimensions:
               polarization: {}
               acquisition_id: {}
               slant_range_time: {}
               azimuth_time: {}
           rcs:
+            optional: true
             dimensions:
               acquisition_id: {}
               slant_range_time: {}
               azimuth_time: {}
           sigma0:
+            optional: true
             dimensions:
               polarization: {}
               acquisition_id: {}

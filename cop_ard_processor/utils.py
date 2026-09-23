@@ -234,12 +234,12 @@ def check_output(output: xr.DataTree) -> None:
                     logger.critical(f"{name_data}/{group_name}/{var_name} has nan values")
 
 
-def get_instrument_mode(in_files: list[str]):
+def get_instrument_mode(in_files: list[str]) -> str:
     """Identify and validate that all input files belong to the same instrument mode/sensor.
 
     Parameters
     ----------
-    in_files : list of str.
+    in_files : list of str
         List of input file paths.
 
     Returns
@@ -257,30 +257,31 @@ def get_instrument_mode(in_files: list[str]):
         raise ValueError("The input list 'in_files' cannot be empty.")
 
     def _extract_single_mode(item: str) -> str:
-        """Extract acquisition mode or sensor from a single file path or DataTree."""
-        search_string = item
-
-        search_upper = search_string.upper()
+        """Extract acquisition mode or sensor from a single file path."""
+        # Extract filename only to avoid false matches from parent folder names
+        filename = os.path.basename(item.rstrip("/\\"))
+        search_upper = filename.upper()
+        logger.critical(f"search_upper: {search_upper}")
 
         # Check SAOCOM pattern (e.g., S1A_OPER_SAR_EOSSP... or .xemt extension)
         if any(token in search_upper for token in ["SAOCOM", "EOSSP", ".XEMT"]):
             return "SAOCOM"
 
         # Check RoseL pattern
-        if "ROSEL" in search_upper:
+        if "ISLC" in search_upper:
             return "ROSEL"
 
         # Check for standard modes (IW, EW)
         for mode in ["IW", "EW"]:
             if f"_{mode}_" in search_upper:
                 return mode
-        
+
         # Check for StripMap (SM) modes, which use beam identifiers S1 through S6
         stripmap_beams = ["S1", "S2", "S3", "S4", "S5", "S6"]
         if any(f"_{beam}_" in search_upper for beam in stripmap_beams):
             return "SM"
 
-        raise ValueError(f"Unable to identify a valid instrument mode or sensor from input: '{search_string}'")
+        raise ValueError(f"Unable to identify a valid instrument mode or sensor from input: '{item}'")
 
     # 1. Identify mode for every file in the input list
     detected_modes = [_extract_single_mode(f) for f in in_files]
