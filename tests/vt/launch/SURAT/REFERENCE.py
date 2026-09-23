@@ -36,7 +36,3 @@ def test_payload():
     mandatory_units = ["Ingestion Unit", "ReferenceDEM Unit", "ReferenceGeometry Unit"]
     for unit in mandatory_units:
         assert any(f"Started : {unit}" in event for event in captured_events), f"Mandatory log trace 'Started : {unit}' missing."
-
-    # DEM Path checks
-    
-    

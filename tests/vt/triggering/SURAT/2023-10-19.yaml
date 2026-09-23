@@ -14,6 +14,7 @@ workflow:
     parameters:
       input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/SAFE/S1A_IW_SLC__1SDV_20231019T084128_20231019T084155_050831_06206A_0E6A.SAFE']
       indices: null
+      polarization: [VV]
   - name: reference_dem
     module: cop_ard_processor.processing_units
     processing_unit: ReferenceDEM

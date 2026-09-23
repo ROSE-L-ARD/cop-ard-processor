@@ -17,6 +17,7 @@ workflow:
         ]
       recompute: true
       indices: null
+      polarization: [VV]
   - name: reference_dem
     module: cop_ard_processor.processing_units
     processing_unit: ReferenceDEM

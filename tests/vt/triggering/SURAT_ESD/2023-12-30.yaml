@@ -1,0 +1,70 @@
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__validate_run: false
+  temporary__folder: /scratch/external/TMP
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+      ETAD: ETAD
+    parameters:
+      input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/SAFE/S1A_IW_SLC__1SDV_20231230T084125_20231230T084152_051881_0644A0_72FE.SAFE']
+      indices: null
+      polarization: [VV]
+  - name: reference_dem
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceDEM
+    inputs:
+      slcs: ingestion.slcs
+    adfs:
+      DEM: DEM
+      REFDB: REFDB
+  - name: reference_geometry
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceGeometry
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+    adfs:
+      REFDB: REFDB
+  - name: coregistration
+    module: cop_ard_processor.processing_units
+    processing_unit: Coregistration
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    parameters:
+      enable_image_matching: false
+      enable_split_spectrum: false
+      enable_esd: true
+    outputs:
+      cslcs: cslcs
+io:
+  adfs:
+    - id: REFDB
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/REF_DB
+    - id: DEM
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/dem
+    - id: ETAD
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/ETAD/S1A_IW_ETA__AXDV_20231230T084125_20231230T084152_051881_0644A0_F72A.SAFE
+  output_products:
+    - id: cslcs
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/OUTPUT/TC-ST-PERF-004/CSLC/cslcs_2023-12-30.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 12
+    threads_per_worker: 1
+    memory_limit: 0
