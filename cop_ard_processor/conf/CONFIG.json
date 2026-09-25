@@ -80,7 +80,7 @@
       "matching_kernel_shape": [15, 15],
       "wsize": [256, 256],
       "wstep": [256, 256],
-      "wsearch": [5, 5],
+      "wsearch": [0, 5],
       "dim": [1, 1],
       "block_size": 10,
       "bandwidth": 16e6,
@@ -95,7 +95,7 @@
       "coherence_threshold_split_spectrum": 0.3
     },
     "ReferenceUpdate": {
-      "posting": { "azimuth_time": 2, "slant_range_time": 8 },
+      "posting": { "azimuth_time": 3, "slant_range_time": 12 },
       "memory_param": 0.95,
       "coherence_threshold": 0.1,
       "stable_interval_days": 365,
@@ -193,7 +193,7 @@
       "matching_kernel_shape": [15, 15],
       "wsize": [256, 256],
       "wstep": [256, 256],
-      "wsearch": [5, 5],
+      "wsearch": [0, 5],
       "dim": [1, 1],
       "block_size": 10,
       "bandwidth": 16e6,
@@ -208,7 +208,7 @@
       "coherence_threshold_split_spectrum": 0.3
     },
     "ReferenceUpdate": {
-      "posting": { "azimuth_time": 2, "slant_range_time": 8 },
+      "posting": { "azimuth_time": 3, "slant_range_time": 12 },
       "memory_param": 0.95,
       "coherence_threshold": 0.1,
       "stable_interval_days": 365,
@@ -306,7 +306,7 @@
       "matching_kernel_shape": [15, 15],
       "wsize": [256, 256],
       "wstep": [256, 256],
-      "wsearch": [5, 5],
+      "wsearch": [0, 5],
       "dim": [1, 1],
       "block_size": 10,
       "bandwidth": 16e6,
@@ -321,7 +321,7 @@
       "coherence_threshold_split_spectrum": 0.3
     },
     "ReferenceUpdate": {
-      "posting": { "azimuth_time": 2, "slant_range_time": 8 },
+      "posting": { "azimuth_time": 5, "slant_range_time": 5 },
       "memory_param": 0.95,
       "coherence_threshold": 0.1,
       "stable_interval_days": 365,
@@ -434,6 +434,119 @@
     },
     "ReferenceUpdate": {
       "posting": { "azimuth_time": 2, "slant_range_time": 8 },
+      "memory_param": 0.95,
+      "coherence_threshold": 0.1,
+      "stable_interval_days": 365,
+      "max_past_stable_history": 10
+    },
+    "Geocoding": {
+      "spacing": {
+        "x": 50,
+        "y": 50
+      },
+      "warp_ov_fact": 100000,
+      "warp_kernel_shape": [11, 11],
+      "warp_kaiser_beta": 6
+    }
+  },
+  "SAOCOM": {
+    "Global": {
+      "atbd_link": "Algorithm Theoretical Basis Document (ATBD) for Sentinel-1 Analysis Ready Data (ARD) Processing, Version 1.0. Published online. Available at: TBD",
+      "facility": "ESA-Copernicus Ground Segment",
+      "product_timeliness": "P24D",
+      "product_timeliness_category": "NTC",
+      "product_data_access": "https://link_product",
+      "product_pixel_coordinate_convention": "pixel-center",
+      "cslc_status": "nominal",
+      "gslc_status": "nominal",
+      "nrb_status": "nominal",
+      "product_filtering": "TBD",
+      "eastern_geometric_accuracy": {
+        "bias": 0,
+        "stddev": 0
+      },
+      "northern_geometric_accuracy": {
+        "bias": 0,
+        "stddev": 0
+      },
+      "geometric_accuracy_radial_rmse": 0,
+      "product_family_specification": "TBD",
+      "providers": [
+        {
+          "name": "ESA",
+          "description": "European Space Agency",
+          "roles": ["producer"]
+        },
+        {
+          "name": "Sentinel-1 ARD Core",
+          "description": "Analysis Ready Data Processor",
+          "roles": ["processor"]
+        }
+      ],
+      "chunks_radar_grid": {
+        "polarization": 1,
+        "acquisition_id": 1,
+        "azimuth_time": 4096,
+        "slant_range_time": 4096
+      },
+      "chunks_geo_grid": {
+        "polarization": 1,
+        "acquisition_id": 1,
+        "x": 1024,
+        "y": 1024
+      },
+      "recompute": false,
+      "reference_date": null
+    },
+    "Ingestion": {
+      "polarization": null,
+      "indices": null,
+      "deramp": true,
+      "noise_removal": false,
+      "apply_invalid_mask": true,
+      "calibration_type": "BetaZero"
+    },
+    "ReferenceDEM": {
+      "interpolation": "cubic",
+      "spacing": {
+        "x": 30,
+        "y": 30
+      }
+    },
+    "Coregistration": {
+      "do_flattening": true,
+      "do_reramp": true,
+      "warp_ov_fact_low_acc": 10000,
+      "warp_kernel_shape_low_acc": [11, 11],
+      "warp_kaiser_beta_low_acc": 6,
+      "warp_ov_fact_high_acc": 100000,
+      "warp_kernel_shape_high_acc": [11, 11],
+      "warp_kaiser_beta_high_acc": 6,
+      "initialize_current_reference": false,
+      "enable_esd": true,
+      "enable_image_matching": true,
+      "enable_split_spectrum": true,
+      "coherence_threshold_image_matching": 0.3,
+      "image_matching_degree": 2,
+      "matching_kernel_shape": [15, 15],
+      "wsize": [256, 256],
+      "wstep": [256, 256],
+      "wsearch": [5, 5],
+      "dim": [1, 1],
+      "block_size": 10,
+      "bandwidth": 6e6,
+      "frequency_offset": 6e6,
+      "multilook_split_spectrum": {
+        "azimuth_time": 64,
+        "slant_range_time": 32
+      },
+      "esd_poly_degree": 2,
+      "split_spectrum_poly_degree": 2,
+      "height_ionosphere": null,
+      "coherence_threshold_split_spectrum": 0.2
+    },
+    "ReferenceUpdate": {
+      "posting": { "azimuth_time": 10, "slant_range_time": 5 },
       "memory_param": 0.95,
       "coherence_threshold": 0.1,
       "stable_interval_days": 365,
