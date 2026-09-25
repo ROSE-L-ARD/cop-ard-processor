@@ -77,10 +77,10 @@ def test_payload():
 
     # 3. Check that Image Matching and Split Spectrum were skipped
     assert any("Skipping image matching" in event for event in captured_events), (
-        "Image matching was unexpectedly skipped."
+        "Skip trace for 'image matching' missing."
     )
     assert any("Skipping split spectrum" in event for event in captured_events), (
-        "Split spectrum was unexpectedly skipped."
+        "Skip trace for 'split spectrum' missing."
     )
 
     # 4. Check external orbit bypass
