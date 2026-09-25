@@ -1,7 +1,7 @@
 general_configuration:
   triggering__load_default_logging: false
   triggering__validate_run: false
-  temporary__folder: /scratch/external/TMP
+  temporary__folder: /data/scratch/external/TMP
   triggering__temporary_shared: true
   breakpoints__activate_all: false
 workflow:
@@ -11,6 +11,8 @@ workflow:
     adfs:
       REFDB: REFDB
     parameters:
+      reference_id: EOSAO1B_2022-01-24T05:53:54.284325
+       
       input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SAOCOM/Murcia/ASC/S4/UNZIP/EOL1ASARSAO1B10306024/S1B_OPER_SAR_EOSSP__CORE_L1A_OLF_20240810T210018.xemt']
   - name: reference_dem
     module: cop_ard_processor.processing_units
