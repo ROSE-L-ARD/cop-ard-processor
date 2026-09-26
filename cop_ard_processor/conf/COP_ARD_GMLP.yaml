@@ -56,11 +56,23 @@ groups:
           acquisition_id:
             dimensions:
               acquisition_id: {}
+          past_reference_date:
+            optional: true
+            dimensions:
+              past_reference_date: {}
         data_variables:
           short_term_coh:
             dimensions:
               polarization: {}
               acquisition_id: {}
+              y: {}
+              x: {}
+          long_term_coh:
+            optional: true
+            dimensions:
+              polarization: {}
+              acquisition_id: {}
+              past_reference_date: {}
               y: {}
               x: {}
 
@@ -368,7 +380,7 @@ attributes:
           product_family_specification: {}
           gmlp_status: {}
           providers: {}
-          
+
   other_metadata:
     product_data_access: {}
     product_geometry: {}
@@ -378,4 +390,3 @@ attributes:
     product_family_specification: {}
     measurement_type: {}
     product_resampling_method: {}
-
