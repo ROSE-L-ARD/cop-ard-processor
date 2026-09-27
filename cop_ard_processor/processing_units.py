@@ -1241,6 +1241,7 @@ class Geocoding(EOProcessingUnit):
         kaiser_beta = kwargs.get("warp_kaiser_beta", config["Geocoding"]["warp_kaiser_beta"])
         spacing = kwargs.get("spacing", config["Geocoding"]["spacing"])
         chunks_geo_grid = kwargs.get("chunks_geo_grid", config["Global"]["chunks_geo_grid"])
+        chunks_geo_grid["past_reference_date"] = 1
         enable_dask = kwargs.get("enable_dask", True)
 
         # 5. Populate unit execution parameters dictionary

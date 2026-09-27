@@ -34,46 +34,46 @@ def test_payload():
     with capture_logs() as captured:
         output_stores = run_payload(payload, dry_run=False)
         updates = {}
-        
+
         for output, output_store in output_stores.items():
             logger.info(f"Checking output store: {output}")
             logger.info(f"Store metadata: {output_store}")
-            
+
             storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
             storage_opts = is_local(output_store["path"], storage_opts)
-            
-            data = xr.open_datatree(
-                output_store["path"], 
-                engine="zarr", 
-                chunks={}, 
-                storage_options=storage_opts
-            )
-            
+
+            data = xr.open_datatree(output_store["path"], engine="zarr", chunks={}, storage_options=storage_opts)
+
             if output not in ["cslcs", "gmlp"]:
                 updates[output] = data
                 continue
-                
+
             for element in data.values():
                 check_ARD_outputs(element, output, logger=logger)
-                
+
     captured_events = [str(log.get("event", "")) for log in captured]
-    
+
     mandatory_units = ["Ingestion Unit", "ReferenceDEM Unit", "ReferenceGeometry Unit", "Coregistration Unit"]
     for unit in mandatory_units:
-        assert any(f"Started : {unit}" in event for event in captured_events), f"Mandatory trace 'Started : {unit}' missing."
+        assert any(f"Started : {unit}" in event for event in captured_events), (
+            f"Mandatory trace 'Started : {unit}' missing."
+        )
 
     # 1. Feature Verifications (ETAD)
     assert any("Skipping ETAD step" in event for event in captured_events), "ETAD should be skipped."
-    
-    # 2. Check that ESD is skipped
-    assert any("Skipping ESD step" in event or "Skipping ESD" in event for event in captured_events), "Skip trace for 'ESD' missing."
 
-    # 3. Check that Image Matching and Split Spectrum were DONE (NOT skipped)
-    assert not any("Skipping image matching" in event for event in captured_events), "Image matching was unexpectedly skipped."
-    assert not any("Skipping split spectrum" in event for event in captured_events), "Split spectrum was unexpectedly skipped."
+    # 2. Check that ESD is skipped
+    assert any("Skipping ESD step" in event or "Skipping ESD" in event for event in captured_events), (
+        "Skip trace for 'ESD' missing."
+    )
+
+    assert any("Skipping image matching" in event for event in captured_events), "Image matching was not skipped."
+    assert any("Skipping split spectrum" in event for event in captured_events), "Split spectrum was not skipped."
 
     # 4. Check external orbit bypass
-    assert any("Skipping external orbit" in event for event in captured_events), "Skip trace for 'external orbit' missing."
+    assert any("Skipping external orbit" in event for event in captured_events), (
+        "Skip trace for 'external orbit' missing."
+    )
 
     # 5. Reference Database Persistence
     if "current_reference" in output_stores and "stable_references" in output_stores:

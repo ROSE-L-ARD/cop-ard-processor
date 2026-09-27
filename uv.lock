@@ -706,7 +706,7 @@ wheels = [
 [[package]]
 name = "cop-ard-app"
 version = "0.0.1"
-source = { git = "https://github.com/bopen/cop-ard-app.git#0ec2d20a418341a9fa23d6390c3a4a135b22d973" }
+source = { git = "https://github.com/bopen/cop-ard-app.git#f61cf7b8dfb7d0dbae6730fd5a16a36b9b66eee7" }
 dependencies = [
     { name = "cop-ard-core" },
     { name = "dask" },
@@ -716,7 +716,7 @@ dependencies = [
 [[package]]
 name = "cop-ard-core"
 version = "0.0.1"
-source = { git = "https://github.com/bopen/cop-ard-core.git#62a00612c853144f4a4c098d24444842dfa2cfe6" }
+source = { git = "https://github.com/bopen/cop-ard-core.git#84e1024ff52422ce2f1fa8c0582a792efe63a374" }
 dependencies = [
     { name = "astropy" },
     { name = "dask" },
@@ -3250,7 +3250,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [

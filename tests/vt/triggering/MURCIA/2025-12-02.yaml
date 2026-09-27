@@ -11,7 +11,7 @@ workflow:
     adfs:
       REFDB: REFDB
     parameters:
-      reference_id: EOSAO1B_2022-01-24T05:53:54.284325
+      reference_id: EOSAO1B_2023-05-19T05:54:03.731621
        
       input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SAOCOM/Murcia/ASC/S4/UNZIP/EOL1ASARSAO1B13935213/S1B_OPER_SAR_EOSSP__CORE_L1A_OLF_20251203T203834.xemt']
   - name: reference_dem
