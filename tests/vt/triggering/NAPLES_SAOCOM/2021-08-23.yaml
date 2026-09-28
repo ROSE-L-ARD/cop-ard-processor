@@ -1,7 +1,7 @@
 general_configuration:
   triggering__load_default_logging: false
   triggering__validate_run: false
-  temporary__folder: /scratch/external/TMP
+  temporary__folder: /data/scratch/external/TMP
   triggering__temporary_shared: true
   breakpoints__activate_all: false
 workflow:
@@ -11,6 +11,7 @@ workflow:
     adfs:
       REFDB: REFDB
     parameters:
+      reference_id: EOSAO1A_2020-03-13T17:08:56.458049
       input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S4/UNZIP/EOL1ASARSAO1A6116702/S1A_OPER_SAR_EOSSP__CORE_L1A_OLF_20221228T074754.xemt']
   - name: reference_dem
     module: cop_ard_processor.processing_units
@@ -38,6 +39,7 @@ workflow:
       simulation_ml: reference_geometry.simulation_ml
     adfs:
       REFDB: REFDB
+      IONO: IONO
     parameters:
       enable_image_matching: true
       enable_split_spectrum: true
@@ -76,6 +78,8 @@ io:
       path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S4/REF_DB
     - id: DEM
       path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S4/dem
+    - id: IONO
+      path: s3://bopen-sar/ARD-ROSE-L/SW-All.csv
   output_products:
     - id: cslcs
       path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S4/OUTPUT/CSLC/cslcs_2021-08-23.zarr

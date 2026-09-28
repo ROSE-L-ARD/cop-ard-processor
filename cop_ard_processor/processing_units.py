@@ -659,7 +659,9 @@ class Coregistration(EOProcessingUnit):
         )
         working_directory_dynamic, storage_options_dynamic = get_wdir_dynamic()
         if adfs is not None and "IONO" in adfs:
-            dbfile = get_adf(adfs["IONO"], ensure_local=True)
+            iono_file = get_adf(adfs["IONO"], ensure_local=True)
+            dbfile = iono_file.path
+            logger.critical(dbfile)
         else:
             dbfile = None
 

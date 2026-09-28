@@ -1,7 +1,7 @@
 general_configuration:
   triggering__load_default_logging: false
   triggering__validate_run: false
-  temporary__folder: /scratch/external/TMP
+  temporary__folder: /data/scratch/external/TMP
   triggering__temporary_shared: true
   breakpoints__activate_all: false
 workflow:
