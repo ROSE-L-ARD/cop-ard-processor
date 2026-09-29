@@ -11,7 +11,7 @@ workflow:
     adfs:
       REFDB: REFDB
     parameters:
-      reference_id: EOSAO1B_2023-05-19T05:54:03.731621
+      reference_id: EOSAO1B_2025-12-02T05:54:05.643823
        
       input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SAOCOM/Murcia/ASC/S4/UNZIP/EOL1ASARSAO1B13244123/S1B_OPER_SAR_EOSSP__CORE_L1A_OLF_20250829T211917.xemt']
   - name: reference_dem
@@ -40,6 +40,7 @@ workflow:
       simulation_ml: reference_geometry.simulation_ml
     adfs:
       REFDB: REFDB
+      IONO: IONO
     parameters:
       enable_image_matching: true
       enable_split_spectrum: true
@@ -78,6 +79,8 @@ io:
       path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Murcia/ASC/S4/REF_DB
     - id: DEM
       path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Murcia/ASC/S4/dem
+    - id: IONO
+      path: s3://bopen-sar/ARD-ROSE-L/SW-All.csv
   output_products:
     - id: cslcs
       path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Murcia/ASC/S4/OUTPUT/CSLC/cslcs_2025-08-28.zarr
