@@ -11,10 +11,7 @@ workflow:
     adfs:
       REFDB: REFDB
     parameters:
-      input_slcs_files:
-        [
-          "s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/SAFE/S1A_IW_SLC__1SDV_20200608T050341_20200608T050409_032921_03D03C_43EC.SAFE",
-        ]
+      input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/SAFE/S1A_IW_SLC__1SDV_20220117T050408_20220117T050436_041496_04EF40_A152.SAFE']
       recompute: true
       polarization: [VV]
   - name: reference_dem
@@ -43,6 +40,8 @@ io:
       path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/REF_DB
     - id: DEM
       path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/dem
+    - id: ORBIT
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/ORBIT/S1A_OPER_AUX_POEORB_OPOD_20210318T210516_V20200607T225942_20200609T005942.EOF
   output_products:
     - id: /not_used
       path: /not_used.zarr
@@ -50,6 +49,6 @@ io:
 dask_context:
   cluster_type: local
   cluster_config:
-    n_workers: 5
+    n_workers: 16
     threads_per_worker: 1
     memory_limit: 0

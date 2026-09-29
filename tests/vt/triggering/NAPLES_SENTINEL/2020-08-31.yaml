@@ -12,7 +12,8 @@ workflow:
       REFDB: REFDB
       ORBIT: ORBIT
     parameters:
-      input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/SAFE/S1A_IW_SLC__1SDV_20200831T050346_20200831T050414_034146_03F755_6803.SAFE']
+      input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/SAFE/S1A_IW_SLC__1SDV_20200831T050346_20200831T050414_034146_03F755_6803.SAFE',
+        's3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/SAFE/S1A_IW_SLC__1SDV_20200831T050411_20200831T050438_034146_03F755_D0DD.SAFE']
       polarization: [VV]
   - name: reference_dem
     module: cop_ard_processor.processing_units
