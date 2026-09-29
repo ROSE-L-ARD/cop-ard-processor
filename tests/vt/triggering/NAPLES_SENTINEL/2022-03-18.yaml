@@ -1,0 +1,119 @@
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__validate_run: false
+  temporary__folder: /data/scratch/external/TMP
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+      ORBIT: ORBIT
+    parameters:
+      input_slcs_files: ['s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/SAFE/S1A_IW_SLC__1SDV_20220318T050407_20220318T050435_042371_050D42_F84B.SAFE']
+      polarization: [VV]
+  - name: reference_dem
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceDEM
+    inputs:
+      slcs: ingestion.slcs
+    adfs:
+      DEM: DEM
+      REFDB: REFDB
+  - name: reference_geometry
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceGeometry
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+    adfs:
+      REFDB: REFDB
+  - name: coregistration
+    module: cop_ard_processor.processing_units
+    processing_unit: Coregistration
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    parameters:
+      enable_image_matching: false
+      enable_split_spectrum: false
+      enable_esd: true
+    outputs:
+      cslcs: cslcs
+  - name: cmlp
+    module: cop_ard_processor.processing_units
+    processing_unit: CMLP
+    inputs:
+      slcs: coregistration.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    outputs:
+      cmlp: cmlp
+      current_reference: current_reference
+      stable_references: stable_references
+  - name: geocoding
+    module: cop_ard_processor.processing_units
+    processing_unit: Geocoding
+    inputs:
+      cmlp: cmlp.cmlp
+      slcs: coregistration.slcs
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    outputs:
+      gmlp: gmlp
+io:
+  adfs:
+    - id: REFDB
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/REF_DB
+    - id: DEM
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/dem
+    - id: ORBIT
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/ORBIT/S1A_OPER_AUX_POEORB_OPOD_20220407T081621_V20220317T225942_20220319T005942.EOF
+  output_products:
+    - id: cslcs
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/OUTPUT/CSLC/cslcs_2022-03-18.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: cmlp
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/OUTPUT/CMLP/cmlp_2022-03-18.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: current_reference
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/OUTPUT/CURRENT_REFERENCE/current_reference_2022-03-18.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: stable_references
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/OUTPUT/STABLE_REFERENCES/stable_reference_2022-03-18.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: gmlp
+      path: s3://bopen-sar/ARD-ROSE-L/SENTINEL/Naples/124/OUTPUT/GMLP/gmlp_2022-03-18.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 16
+    threads_per_worker: 1
+    memory_limit: 0
