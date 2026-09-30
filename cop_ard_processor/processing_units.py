@@ -270,6 +270,9 @@ class ReferenceDEM(EOProcessingUnit):
     to match the spatial radar grid and coordinate system of the input SLC stack.
     """
 
+    PROCESSOR_NAME = "ReferenceDEM"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input data products required by this unit."""
@@ -423,6 +426,9 @@ class ReferenceGeometry(EOProcessingUnit):
     and the input DEM. It also pre-computes geometric layers (e.g., incidence angles)
     and masks (layover, shadow) to be stored in the static working directory.
     """
+
+    PROCESSOR_NAME = "ReferenceGeometry"
+    PROCESSOR_VERSION = "0.0.1"
 
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -586,6 +592,9 @@ class Coregistration(EOProcessingUnit):
     This unit performs geometrical warping, image matching refinement, split-spectrum
     ionospheric phase estimation, and Enhanced Spectral Diversity (ESD) corrections.
     """
+
+    PROCESSOR_NAME = "Coregistration"
+    PROCESSOR_VERSION = "0.0.1"
 
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -988,6 +997,9 @@ class ReferenceUpdate(EOProcessingUnit):
     database with newly identified stable acquisitions without outputting a full CMLP product tree.
     """
 
+    PROCESSOR_NAME = "ReferenceUpdate"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input datasets required by this unit."""
@@ -1128,6 +1140,9 @@ class CMLP(EOProcessingUnit):
     This unit computes cmlp, identifies stable reference
     acquisitions, updates the reference database, and generates updated stack products.
     """
+
+    PROCESSOR_NAME = "CMLP"
+    PROCESSOR_VERSION = "0.0.1"
 
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
@@ -1273,6 +1288,9 @@ class Geocoding(EOProcessingUnit):
 
     This unit resamples and warps the  CMLP stack onto the target geographic grid using specified resampling kernels and pixel spacing.
     """
+
+    PROCESSOR_NAME = "Geocoding"
+    PROCESSOR_VERSION = "0.0.1"
 
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):

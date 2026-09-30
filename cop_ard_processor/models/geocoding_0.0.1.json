@@ -1,0 +1,66 @@
+{
+  "available_modes": [
+    "default"
+  ],
+  "default_mode": "default",
+  "modes_config": {
+    "default": {
+      "inputs": {
+        "cmlp": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        },
+        "slcs": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        },
+        "simulation_ref": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        },
+        "simulation_ml": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        }
+      },
+      "adfs": {
+        "REFDB": {
+          "min_occurs": 1,
+          "spec": {}
+        }
+      },
+      "outputs": {},
+      "parameters": {
+        "warp_ov_fact": {
+          "required": false,
+          "value_type": "float"
+        },
+        "warp_kaiser_beta": {
+          "required": false,
+          "value_type": "float"
+        },
+        "enable_dask": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "facility": {
+          "required": false,
+          "value_type": "str"
+        },
+        "warp_kernel_shape": {
+          "required": false
+        },
+        "spacing": {
+          "required": false
+        },
+        "chunks_geo_grid": {
+          "required": false
+        }
+      }
+    }
+  }
+}
