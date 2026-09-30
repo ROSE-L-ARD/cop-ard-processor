@@ -12,7 +12,7 @@ from cop_ard_app.etad import import_ETAD
 from cop_ard_app.gmlp import stack_gmlp
 from cop_ard_app.io import Path
 from cop_ard_app.matching import estimate_poly_matching, stack_disparity
-from cop_ard_app.model import extract_acquisition_dates, extract_orbits, update_coreg, update_gmlp
+from cop_ard_app.model import extract_acquisition_dates, extract_orbits, update_coreg, update_gmlp, extract_acquisition_id
 from cop_ard_app.orbit import import_ORBIT
 from cop_ard_app.simulation import stack_simulation, stack_simulation_ml
 from cop_ard_app.slc import finalize_import, import_slc_stack
@@ -159,6 +159,7 @@ class Ingestion(EOProcessingUnit):
             enable_dask=enable_dask,
         )
 
+        acquisition_ids = extract_acquisition_id(slcs, multiburst=multiburst)
         acquisition_dates = extract_acquisition_dates(slcs, multiburst=multiburst)
 
         # 5. Apply external ETAD and precise orbit auxiliary data
@@ -191,7 +192,7 @@ class Ingestion(EOProcessingUnit):
                 logger.info("Executing ORBIT import...")
                 slcs, used_orbits = import_ORBIT(
                     slcs,
-                    acquisition_dates,
+                    acquisition_ids,
                     orbit_files,
                     wdir_path=working_directory_dynamic,
                     multiburst=multiburst,

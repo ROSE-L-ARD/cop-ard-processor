@@ -291,7 +291,7 @@ for item in data.get("inputs", []):
     rclone_src = item["rclone_src"]
     rclone_dst = item["rclone_dst"]
     print(f"[RCLONE DOWNLOAD] Downloading {rclone_src} -> {rclone_dst}")
-    subprocess.run(["rclone", "copy", "-P", rclone_src, rclone_dst], check=True)
+    subprocess.run(["rclone", "copy", rclone_src, rclone_dst, "--transfers", "16", "--stats", "15s"], check=True)
 
     # Search for any .zip files in the downloaded directory and extract them
     search_dir = rclone_dst if os.path.isdir(rclone_dst) else os.path.dirname(rclone_dst)
@@ -347,7 +347,7 @@ for item in data.get("outputs", []):
     if os.path.exists(local_src):
         if exit_code == 0:
             print(f"[RCLONE UPLOAD] Uploading {local_src} -> {rclone_dst}")
-            subprocess.run(["rclone", "copy", "-P", local_src, rclone_dst], check=True)
+            subprocess.run(["rclone", "copy", local_src, rclone_dst, "--transfers", "16", "--stats", "15s"], check=True)
         else:
             print(f"[SKIP UPLOAD] Test failed (exit code {exit_code}). Skipping upload for {local_src}")
 
