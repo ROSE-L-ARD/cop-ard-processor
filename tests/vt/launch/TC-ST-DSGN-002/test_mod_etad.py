@@ -34,7 +34,7 @@ FACILITY_ROOT = Path("/data/SENTINEL1/SURAT")
 
 # PLACEHOLDER — confirm/create on facility (base: /data/SENTINEL1/SURAT)
 # MOD-ETAD: real 2023-07-27 ETAD product copy with annotation/*.EOF deleted.
-MOD_ETAD_PATH = "/data/SENTINEL1/SURAT/WDIR/MOD-ETAD-20230727"
+MOD_ETAD_PATH = "/data/SENTINEL1/SURAT/MOD_ETAD/S1A_IW_ETA__AXDV_20231031T084128_20231031T084155_051006_062667_9059.SAFE"
 
 YAML_PATH = Path(__file__).parents[2] / "triggering" / "TC-ST-DSGN-002" / "mod_etad.yaml"
 

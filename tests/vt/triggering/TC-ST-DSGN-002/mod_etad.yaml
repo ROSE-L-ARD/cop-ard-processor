@@ -41,7 +41,7 @@ io:
     # MOD-ETAD: real 2023-07-27 ETAD product copy with annotation/*.EOF deleted.
     # PLACEHOLDER — confirm/create on facility (base: /data/SENTINEL1/SURAT).
     - id: ETAD
-      path: /data/SENTINEL1/SURAT/WDIR/MOD-ETAD-20230727
+      path: /data/SENTINEL1/SURAT/MOD_ETAD/S1A_IW_ETA__AXDV_20231031T084128_20231031T084155_051006_062667_9059.SAFE
 dask_context:
   cluster_type: local
   cluster_config:
