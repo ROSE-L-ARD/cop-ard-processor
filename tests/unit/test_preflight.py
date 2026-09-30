@@ -229,19 +229,31 @@ def test_run_preflight_checks_etad_adf(tmp_path):
 # SAFE archive XML checks
 # ---------------------------------------------------------------------------
 
-VALID_MANIFEST = """<?xml version="1.0" encoding="UTF-8"?>
-<manifest>
-  <identification></identification>
-  <characterisation></characterisation>
-  <archive></archive>
-</manifest>
+PRODUCT_XSD = """<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:element name="product" type="productType"/>
+  <xsd:complexType name="productType">
+    <xsd:sequence>
+      <xsd:element name="adsHeader" type="xsd:string"/>
+      <xsd:element name="s1SARPayload" type="xsd:string"/>
+    </xsd:sequence>
+  </xsd:complexType>
+</xsd:schema>
 """
 
-VALID_SLC = """<?xml version="1.0" encoding="UTF-8"?>
-<slc xmlns="http://csa.itools.astex.com/SDS/S1/1.0/s1sml.xsd">
-  <commonHeader></commonHeader>
+VALID_PRODUCT_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<product>
+  <adsHeader></adsHeader>
   <s1SARPayload></s1SARPayload>
-</slc>
+</product>
+"""
+
+# Product document with the required `<s1SARPayload>` child removed, mirroring
+# the MOD-SLC artifact used by TC-ST-RAMS-001.
+MOD_PRODUCT_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<product>
+  <adsHeader></adsHeader>
+</product>
 """
 
 EXTRA_ANNOTATION = """<?xml version="1.0" encoding="UTF-8"?>
@@ -250,33 +262,39 @@ EXTRA_ANNOTATION = """<?xml version="1.0" encoding="UTF-8"?>
 </annotation>
 """
 
-BROKEN_MANIFEST_MISSING_ARCHIVE = """<manifest>
-  <identification></identification>
-  <characterisation></characterisation>
-</manifest>
+# The real SAFE manifest is a CCSDS XFDU document; no bundled schema covers
+# it, so the preflight only checks it for well-formedness.
+VALID_MANIFEST = """<?xml version="1.0" encoding="UTF-8"?>
+<xfdu:XFDU xmlns:xfdu="urn:ccsds:schema:xfdu:1">
+  <xfdu:informationPackageMap/>
+  <xfdu:metadataSection/>
+  <xfdu:dataObjectSection/>
+</xfdu:XFDU>
 """
 
-BROKEN_SLC_MISSING_PAYLOAD = """<slc xmlns="http://csa.itools.astex.com/SDS/S1/1.0/s1sml.xsd">
-  <commonHeader></commonHeader>
-</slc>
-"""
-
-MALFORMED_MANIFEST = """<manifest>
-  <identification>
-</manifest>
+MALFORMED_MANIFEST = """<xfdu:XFDU xmlns:xfdu="urn:ccsds:schema:xfdu:1">
+  <xfdu:informationPackageMap>
+</xfdu:XFDU>
 """
 
 
-def _write_safe_product(safe_dir, manifest=VALID_MANIFEST, slc=VALID_SLC):
-    """Write a minimal SAFE archive layout under `safe_dir`."""
+def _write_safe_product(safe_dir, manifest=VALID_MANIFEST, product=VALID_PRODUCT_XML, with_support=True):
+    """Write a minimal SAFE archive layout under `safe_dir`.
+
+    Mirrors the layout of a real Sentinel-1 SLC SAFE: a ``manifest.safe``
+    root file, product annotation XML under ``annotation/`` and the bundled
+    product schema under ``support/``.
+    """
     safe_dir.mkdir(parents=True, exist_ok=True)
-    granule_dir = safe_dir / "granule"
     annotation_dir = safe_dir / "annotation"
-    granule_dir.mkdir(parents=True, exist_ok=True)
     annotation_dir.mkdir(parents=True, exist_ok=True)
-    (safe_dir / "manifest.xml").write_text(manifest, encoding="utf-8")
-    (granule_dir / "slc.xml").write_text(slc, encoding="utf-8")
+    (safe_dir / "manifest.safe").write_text(manifest, encoding="utf-8")
+    (annotation_dir / "s1a-product-001.xml").write_text(product, encoding="utf-8")
     (annotation_dir / "extra.xml").write_text(EXTRA_ANNOTATION, encoding="utf-8")
+    if with_support:
+        support_dir = safe_dir / "support"
+        support_dir.mkdir(parents=True)
+        (support_dir / "s1-product.xsd").write_text(PRODUCT_XSD, encoding="utf-8")
     return safe_dir
 
 
@@ -286,27 +304,32 @@ def test_safe_xml_valid_product_passes(tmp_path):
     assert violations == []
 
 
-def test_safe_xml_missing_children_are_opt_in(tmp_path):
-    safe_dir = _write_safe_product(
-        tmp_path / SAFE_PRODUCT,
-        manifest=BROKEN_MANIFEST_MISSING_ARCHIVE,
-        slc=BROKEN_SLC_MISSING_PAYLOAD,
-    )
+def test_safe_xml_bundled_schema_violation(tmp_path):
+    safe_dir = _write_safe_product(tmp_path / SAFE_PRODUCT, product=MOD_PRODUCT_XML)
 
     assert run_preflight({}, None, input_slcs_files=[str(safe_dir)]) == []
     assert run_preflight({}, None, input_slcs_files=[str(safe_dir)], schema_validation=False) == []
 
     violations = run_preflight({}, None, input_slcs_files=[str(safe_dir)], schema_validation=True)
-    details = {v.detail for v in violations}
-    assert "root element 'manifest' is missing required child element 'archive'" in details
-    assert "root element 'slc' is missing required child element 's1SARPayload'" in details
+    assert len(violations) == 1
+    assert violations[0].scope.endswith("annotation/s1a-product-001.xml")
+    assert violations[0].detail.startswith("XML validation against s1-product.xsd failed: ")
+    assert "s1SARPayload" in violations[0].detail
+
+
+def test_safe_xml_no_support_dir_only_checks_well_formedness(tmp_path):
+    # Without a support/ directory no schema is available: the MOD product is
+    # still well-formed, so no violation is reported.
+    safe_dir = _write_safe_product(tmp_path / SAFE_PRODUCT, product=MOD_PRODUCT_XML, with_support=False)
+    violations = run_preflight({}, None, input_slcs_files=[str(safe_dir)], schema_validation=True)
+    assert violations == []
 
 
 def test_safe_xml_malformed_file_reports_violation(tmp_path):
     safe_dir = _write_safe_product(tmp_path / SAFE_PRODUCT, manifest=MALFORMED_MANIFEST)
     violations = run_preflight({}, None, input_slcs_files=[str(safe_dir)], schema_validation=True)
     assert len(violations) == 1
-    assert violations[0].scope.endswith("manifest.xml")
+    assert violations[0].scope.endswith("manifest.safe")
     assert violations[0].detail.startswith("malformed XML: ")
 
 

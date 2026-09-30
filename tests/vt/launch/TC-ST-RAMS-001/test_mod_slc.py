@@ -11,13 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TC-ST-RAMS-001 launch test: Ingestion preflight (Layer 1c) on a broken SAFE manifest.
+"""TC-ST-RAMS-001 launch test: Ingestion preflight (Layer 1c) on a broken SAFE archive.
 
-The payload points ``input_slcs_files`` at a MOD-SLC SAFE archive whose
-``manifest.xml`` has had its ``<archive>`` element removed. ``triggering__validate_run``
-is ``true`` and the nominal parameters satisfy the EOPF contract (Layer 2), so
-execution reaches ``Ingestion.run`` where the Layer-1 preflight must raise a
-single ``PreflightError`` reporting the missing ``archive`` child element.
+The payload points ``input_slcs_files`` at a MOD-SLC SAFE archive in which the
+first SLC product annotation XML has had its required ``<swathTiming>``
+element removed. The Layer-1 preflight validates every XML document against
+the XSD schemas bundled in the archive's own ``support`` directory, so
+execution reaches ``Ingestion.run`` and the preflight must raise a single
+``PreflightError`` reporting the schema violation against
+``s1-level-1-product.xsd``.
+
+To build the MOD-SLC artifact on the facility (base: /data/SENTINEL1/SURAT):
+
+    cp -r SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE \
+        SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111_MODSLC.SAFE
+    python3 - <<'PY'
+from lxml import etree
+path = (
+    "/data/SENTINEL1/SURAT/SAFE/"
+    "S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111_MODSLC.SAFE"
+    "/annotation/s1a-iw1-slc-vh-20230727t084127-20230727t084152-049606-05f712-001.xml"
+)
+tree = etree.parse(path)
+for el in [c for c in tree.getroot() if c.tag.split("}")[-1] == "swathTiming"]:
+    tree.getroot().remove(el)
+tree.write(path, xml_declaration=True, encoding="UTF-8")
+PY
 """
 
 import logging
@@ -32,7 +51,8 @@ from scripts.run_payload import run_payload
 FACILITY_ROOT = Path("/data/SENTINEL1/SURAT")
 
 # PLACEHOLDER — confirm/create on facility (base: /data/SENTINEL1/SURAT)
-# MOD-SLC: real SAFE copy with the <archive> element removed from manifest.xml.
+# MOD-SLC: real SAFE copy with the required <swathTiming> element removed from
+# the first product annotation XML (see module docstring for the recipe).
 MOD_SLC_PATH = "/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111_MODSLC.SAFE"
 
 YAML_PATH = Path(__file__).parents[2] / "triggering" / "TC-ST-RAMS-001" / "mod_slc.yaml"
@@ -40,7 +60,7 @@ YAML_PATH = Path(__file__).parents[2] / "triggering" / "TC-ST-RAMS-001" / "mod_s
 
 @pytest.mark.need_files
 def test_mod_slc(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture):
-    """Run the MOD-SLC payload and assert the preflight reports the missing <archive> element."""
+    """Run the MOD-SLC payload and assert the preflight reports the schema violation."""
     caplog.set_level(logging.INFO)
 
     if not FACILITY_ROOT.exists():
@@ -67,7 +87,9 @@ def test_mod_slc(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture
     # The Ingestion unit must have actually started before being rejected.
     assert "Started : Ingestion Unit" in haystack
 
-    # Layer-1 preflight raised pointing at the MOD-SLC manifest and its missing element.
+    # Layer-1 preflight raised pointing at the MOD-SLC product XML, the bundled
+    # schema that rejected it and the missing element.
     assert "Ingestion preflight failed with" in haystack
     assert MOD_SLC_PATH in haystack
-    assert "root element 'manifest' is missing required child element 'archive'" in haystack
+    assert "s1-level-1-product.xsd" in haystack
+    assert "swathTiming" in haystack

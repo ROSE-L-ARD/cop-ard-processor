@@ -31,7 +31,9 @@ unit (see `UNIT_SPECS`):
 1. Resolved-parameter sanity (always on).
 2. ETAD product integrity (Ingestion only, when an ETAD ADF is provided).
 3. SAFE XML checks (Ingestion only, opt-in, only when the ``schema_validation``
-   kwarg is exactly ``True``).
+   kwarg is exactly ``True``): well-formedness of every XML document in the
+   archive plus validation against the XSD schemas bundled in the archive's
+   ``support`` directory.
 """
 
 import json
@@ -40,9 +42,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from xml.etree import ElementTree
 
 import xarray as xr
+from lxml import etree
 
 from cop_ard_processor.utils import get_instrument_mode
 
@@ -689,18 +691,23 @@ class EtadStackValidator:
 
 
 class SafeXmlValidator:
-    """Well-formedness and minimal structural validator for SAFE archives.
+    """Well-formedness and XML-schema validator for SAFE archives.
 
-    Every XML file inside the SAFE directory must be well-formed. Two file
-    families are checked a little more deeply: the SAFE ``manifest.xml`` and
-    the Sentinel-1 SLC safety document (``s1sml``). The required-child sets
-    are intentionally minimal: they only guard against clearly broken
-    archives, they do not attempt a full schema validation.
+    Every XML document inside the SAFE directory (all ``*.xml`` files plus
+    the ``manifest.safe`` root file) must be well-formed.  In addition, every
+    document whose root element is declared by one of the XSD schemas bundled
+    in the archive's own ``support`` directory is validated against that
+    schema.  The bundled schemas are the Sentinel-1 Level-1 product schemas
+    shipped inside the product itself (``s1-level-1-product.xsd``,
+    ``s1-level-1-calibration.xsd``, ...), so no external schema source is
+    needed.  Documents without a matching bundled schema (e.g. the CCSDS XFDU
+    manifest) are only checked for well-formedness, as are archives that
+    carry no ``support`` directory at all.  Non-XML preview files
+    (``*.html``, ``*.kml``) are intentionally ignored.
     """
 
-    S1SML_NAMESPACE = "http://csa.itools.astex.com/SDS/S1/1.0/s1sml.xsd"
-    MANIFEST_REQUIRED_CHILDREN = ("identification", "characterisation", "archive")
-    S1SML_REQUIRED_CHILDREN = ("commonHeader", "s1SARPayload")
+    MANIFEST_NAME = "manifest.safe"
+    SUPPORT_DIR = "support"
 
     def validate(self, value: Any, violations: list[Violation]) -> None:
         """Validate one SAFE product directory and append violations found."""
@@ -710,20 +717,59 @@ class SafeXmlValidator:
             violations.append(Violation(scope, f"SAFE product directory does not exist: {safe_dir}"))
             return
 
-        for xml_path in sorted(safe_dir.rglob("*.xml")):
+        schemas = self._load_bundled_schemas(safe_dir)
+        for xml_path in sorted(safe_dir.rglob("*.xml")) + [safe_dir / self.MANIFEST_NAME]:
+            if not xml_path.is_file():
+                continue
             file_scope = str(xml_path.resolve())
             try:
-                root = ElementTree.parse(str(xml_path)).getroot()
-            except ElementTree.ParseError as exc:
+                doc = etree.parse(str(xml_path))
+            except etree.XMLSyntaxError as exc:
                 violations.append(Violation(file_scope, f"malformed XML: {exc}"))
                 continue
 
-            namespace, local_name = self._split_tag(root.tag)
-            if local_name == "manifest":
-                self._check_children(root, self.MANIFEST_REQUIRED_CHILDREN, violations, file_scope)
-            elif namespace == self.S1SML_NAMESPACE or local_name == "slc":
-                # Required-child set is intentionally minimal (see class docstring).
-                self._check_children(root, self.S1SML_REQUIRED_CHILDREN, violations, file_scope)
+            entry = schemas.get(self._split_tag(doc.getroot().tag)[1])
+            if entry is None:
+                continue
+            schema, schema_file = entry
+            try:
+                schema.assertValid(doc)
+            except etree.DocumentInvalid as exc:
+                detail = " ".join(str(exc).split())
+                violations.append(Violation(file_scope, f"XML validation against {schema_file} failed: {detail}"))
+
+    def _load_bundled_schemas(self, safe_dir: Path) -> dict[str, tuple[etree.XMLSchema, str]]:
+        """Compile every XSD in the SAFE's ``support`` directory.
+
+        Returns a map from the local name of each globally declared element
+        to the compiled schema and its file name.  Schemas that fail to
+        compile are skipped; a missing ``support`` directory means no schema
+        validation is possible.
+        """
+        schemas: dict[str, tuple[etree.XMLSchema, str]] = {}
+        support_dir = safe_dir / self.SUPPORT_DIR
+        if not support_dir.is_dir():
+            return schemas
+        for xsd_path in sorted(support_dir.glob("*.xsd")):
+            try:
+                schema = etree.XMLSchema(etree.parse(str(xsd_path)))
+            except etree.LxmlError:
+                continue
+            for name in self._global_element_names(xsd_path):
+                schemas[name] = (schema, xsd_path.name)
+        return schemas
+
+    @staticmethod
+    def _global_element_names(xsd_path: Path) -> list[str]:
+        """Names of the elements declared directly under ``<xsd:schema>``."""
+        root = etree.parse(str(xsd_path)).getroot()
+        return [
+            child.get("name")
+            for child in root
+            if isinstance(child.tag, str)
+            and SafeXmlValidator._split_tag(child.tag)[1] == "element"
+            and child.get("name")
+        ]
 
     @staticmethod
     def _split_tag(tag: str) -> tuple[str | None, str]:
@@ -732,21 +778,6 @@ class SafeXmlValidator:
             namespace, _, local_name = tag[1:].partition("}")
             return namespace, local_name
         return None, tag
-
-    def _check_children(
-        self,
-        root: ElementTree.Element,
-        required_children: tuple[str, ...],
-        violations: list[Violation],
-        scope: str,
-    ) -> None:
-        root_local_name = self._split_tag(root.tag)[1]
-        present = {self._split_tag(child.tag)[1] for child in root}
-        for child_name in required_children:
-            if child_name not in present:
-                violations.append(
-                    Violation(scope, f"root element '{root_local_name}' is missing required child element '{child_name}'")
-                )
 
 
 # ---------------------------------------------------------------------------
