@@ -1,0 +1,51 @@
+# TC-ST-RAMS-001 — Ingestion preflight: SAFE archive XML integrity (Layer 1c).
+#
+# This payload runs the Ingestion unit against a MOD-SLC SAFE archive in which
+# the first product annotation XML has had its required `<swathTiming>`
+# element removed. With `schema_validation: true` the Layer-1 preflight
+# validates every XML document against the XSD schemas bundled in the
+# archive's own `support` directory and reports a single violation:
+#   - XML validation against s1-level-1-product.xsd failed: ... Expected is ( swathTiming ).
+#
+# MOD-SLC is a real SAFE copy (same granule name, `_MODSLC` suffix) with only
+# that one element stripped; every other XML document in the archive is
+# intact, so no further XML violations are expected. The filename keeps the
+# `IW` token so `get_instrument_mode` still resolves IW.
+#
+# `triggering__validate_run` is `true`: the EOPF contract (Layer 2) is fully
+# satisfied by the nominal parameters and the REFDB ADF, so execution reaches
+# `Ingestion.run`, where the Layer-1 preflight raises on the broken product XML.
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__use_basic_logging: true
+  triggering__validate_run: true
+  temporary__folder: /data/SENTINEL1/SURAT/TMP
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+    parameters:
+      # MOD-SLC: real SAFE copy with the `<swathTiming>` element removed from
+      # the first product annotation XML.
+      # PLACEHOLDER — confirm/create on facility (base: /data/SENTINEL1/SURAT).
+      input_slcs_files: [/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111_MODSLC.SAFE]
+      # Nominal sub-swath selection.
+      indices: [0, 1, 27, 28]
+      # Opt in to the SAFE XML checks (well-formedness + validation against
+      # the schemas bundled in the archive's support/ directory) so the
+      # missing <swathTiming> is reported by the preflight.
+      schema_validation: true
+io:
+  adfs:
+    - id: REFDB
+      path: /data/SENTINEL1/SURAT/WDIR/REFDB
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 16
+    threads_per_worker: 1
+    memory_limit: 0

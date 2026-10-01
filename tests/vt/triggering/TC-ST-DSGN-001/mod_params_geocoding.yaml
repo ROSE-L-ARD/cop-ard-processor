@@ -1,0 +1,112 @@
+# TC-ST-DSGN-001 / Geocoding preflight scenario: resolved-parameter sanity (Layer 1).
+#
+# The upstream Ingestion/ReferenceDEM/ReferenceGeometry/Coregistration/CMLP
+# steps run nominally; the target Geocoding step carries one deliberately
+# broken parameter so the Layer-1 preflight engine raises a single
+# PreflightError with exactly one violation:
+#   - spacing: [0]  (zero is not a positive grid spacing)
+#
+# `triggering__validate_run` is intentionally `false`: downstream units have
+# no EOPF contract (Layer 2), and `false` proves the always-on Layer-1
+# preflight fires independently of any EOPF validation.
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__use_basic_logging: true
+  triggering__validate_run: false
+  temporary__folder: /data/SENTINEL1/SURAT/TMP/TC-ST-DSGN-001/geocoding
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+    parameters:
+      input_slcs_files: [/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE]
+      indices: [0, 1, 27, 28]
+  - name: reference_dem
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceDEM
+    inputs:
+      slcs: ingestion.slcs
+    adfs:
+      DEM: DEM
+      REFDB: REFDB
+  - name: reference_geometry
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceGeometry
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+    adfs:
+      REFDB: REFDB
+  - name: coregistration
+    module: cop_ard_processor.processing_units
+    processing_unit: Coregistration
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    parameters:
+      # Nominal: the CONFIG default is false; a fresh REFDB requires it.
+      initialize_current_reference: true
+    outputs:
+      cslcs: cslcs
+  - name: cmlp
+    module: cop_ard_processor.processing_units
+    processing_unit: CMLP
+    inputs:
+      slcs: coregistration.slcs
+    adfs:
+      REFDB: REFDB
+    outputs:
+      current_reference: current_reference
+      stable_references: stable_references
+  - name: geocoding
+    module: cop_ard_processor.processing_units
+    processing_unit: Geocoding
+    inputs:
+      cmlp: cmlp.cmlp
+      slcs: coregistration.slcs
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    parameters:
+      # MOD value: zero is not a positive grid spacing.
+      spacing: [0]
+io:
+  adfs:
+    - id: REFDB
+      path: /data/SENTINEL1/SURAT/WDIR/TC-ST-DSGN-001/geocoding/REFDB
+    - id: DEM
+      path: /data/SENTINEL1/SURAT/dem
+  output_products:
+    - id: cslcs
+      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-DSGN-001/geocoding/CSLC/cslcs_2023-07-27.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: current_reference
+      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-DSGN-001/geocoding/CURRENT_REFERENCE/current_reference_2023-07-27.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: stable_references
+      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-DSGN-001/geocoding/STABLE_REFERENCES/stable_reference_2023-07-27.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 16
+    threads_per_worker: 1
+    memory_limit: 0

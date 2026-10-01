@@ -1,0 +1,160 @@
+{
+  "available_modes": [
+    "default"
+  ],
+  "default_mode": "default",
+  "modes_config": {
+    "default": {
+      "inputs": {
+        "slcs": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        },
+        "dem": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        },
+        "simulation_ref": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        },
+        "simulation_ml": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        }
+      },
+      "adfs": {
+        "REFDB": {
+          "min_occurs": 1,
+          "spec": {}
+        }
+      },
+      "outputs": {},
+      "parameters": {
+        "initialize_current_reference": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "enable_image_matching": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "enable_split_spectrum": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "enable_esd": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "do_flattening": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "do_reramp": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "recompute": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "enable_dask": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "warp_ov_fact_low_acc": {
+          "required": false,
+          "value_type": "float"
+        },
+        "warp_kaiser_beta_low_acc": {
+          "required": false,
+          "value_type": "float"
+        },
+        "warp_ov_fact_high_acc": {
+          "required": false,
+          "value_type": "float"
+        },
+        "warp_kaiser_beta_high_acc": {
+          "required": false,
+          "value_type": "float"
+        },
+        "bandwidth": {
+          "required": false,
+          "value_type": "float"
+        },
+        "frequency_offset": {
+          "required": false,
+          "value_type": "float"
+        },
+        "coherence_threshold_image_matching": {
+          "required": false,
+          "value_type": "float",
+          "min_value": 0,
+          "max_value": 1
+        },
+        "coherence_threshold_split_spectrum": {
+          "required": false,
+          "value_type": "float",
+          "min_value": 0,
+          "max_value": 1
+        },
+        "image_matching_degree": {
+          "required": false,
+          "value_type": "int"
+        },
+        "block_size": {
+          "required": false,
+          "value_type": "int"
+        },
+        "esd_poly_degree": {
+          "required": false,
+          "value_type": "int"
+        },
+        "split_spectrum_poly_degree": {
+          "required": false,
+          "value_type": "int"
+        },
+        "height_ionosphere": {
+          "required": false,
+          "value_type": "int"
+        },
+        "facility": {
+          "required": false,
+          "value_type": "str"
+        },
+        "chunks_geo_grid": {
+          "required": false
+        },
+        "warp_kernel_shape_low_acc": {
+          "required": false
+        },
+        "warp_kernel_shape_high_acc": {
+          "required": false
+        },
+        "matching_kernel_shape": {
+          "required": false
+        },
+        "wsize": {
+          "required": false
+        },
+        "wstep": {
+          "required": false
+        },
+        "wsearch": {
+          "required": false
+        },
+        "dim": {
+          "required": false
+        },
+        "multilook_split_spectrum": {
+          "required": false
+        }
+      }
+    }
+  }
+}

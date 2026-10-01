@@ -1,0 +1,51 @@
+{
+  "available_modes": [
+    "default"
+  ],
+  "default_mode": "default",
+  "modes_config": {
+    "default": {
+      "inputs": {
+        "slcs": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        }
+      },
+      "adfs": {
+        "REFDB": {
+          "min_occurs": 1,
+          "spec": {}
+        },
+        "DEM": {
+          "min_occurs": 1,
+          "spec": {}
+        }
+      },
+      "outputs": {},
+      "parameters": {
+        "recompute": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "interpolation": {
+          "required": false,
+          "value_type": "str"
+        },
+        "facility": {
+          "required": false,
+          "value_type": "str"
+        },
+        "chunks_geo_grid": {
+          "required": false
+        },
+        "spacing": {
+          "required": false
+        },
+        "epsg": {
+          "required": false
+        }
+      }
+    }
+  }
+}

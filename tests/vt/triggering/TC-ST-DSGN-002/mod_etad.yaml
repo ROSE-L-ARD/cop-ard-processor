@@ -1,0 +1,50 @@
+# TC-ST-DSGN-002 — Ingestion preflight: ETAD product integrity (Layer 1b).
+#
+# This payload runs the Ingestion unit with a MOD-ETAD auxiliary data file.
+# MOD-ETAD is a copy of the real 2023-07-27 ETAD product with its
+# `annotation/*.EOF` files deleted. The Layer-1 preflight's ETAD check
+# therefore reports a single violation:
+#   - no annotation/*.EOF file found
+#
+# The netCDF under measurement/ is intact, so no further ETAD violations are
+# expected. Nominal ingestion parameters are used so the EOPF contract
+# (Layer 2) is satisfied and execution reaches `Ingestion.run`, where the
+# Layer-1 preflight raises on the broken ETAD product.
+#
+# `triggering__validate_run` is `true`; the optional `.*ETAD.*` ADF (min_occurs
+# 0) is declared by the workflow step and satisfied by the `ETAD` io.adf entry
+# below, so the contract check passes.
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__use_basic_logging: true
+  triggering__validate_run: true
+  temporary__folder: /data/SENTINEL1/SURAT/TMP
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+      # Wire the (optional) ETAD ADF so the preflight exercises the ETAD check.
+      ETAD: ETAD
+    parameters:
+      # Nominal (real) Sentinel-1 IW SAFE.
+      input_slcs_files: [/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE]
+      # Nominal sub-swath selection.
+      indices: [0, 1, 27, 28]
+io:
+  adfs:
+    - id: REFDB
+      path: /data/SENTINEL1/SURAT/WDIR/REFDB
+    # MOD-ETAD: real 2023-07-27 ETAD product copy with annotation/*.EOF deleted.
+    # PLACEHOLDER — confirm/create on facility (base: /data/SENTINEL1/SURAT).
+    - id: ETAD
+      path: /data/SENTINEL1/SURAT/MOD_ETAD/S1A_IW_ETA__AXDV_20231031T084128_20231031T084155_051006_062667_9059.SAFE
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 16
+    threads_per_worker: 1
+    memory_limit: 0

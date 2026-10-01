@@ -70,6 +70,7 @@ target-version = "py313"
 
 [tool.pytest.ini_options]
 markers = ["integration", "unit", "need_files"]
+pythonpath = ["."]
 [[tool.uv.index]]
 url = "https://pypi.org/simple"
 

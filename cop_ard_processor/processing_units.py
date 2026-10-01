@@ -1,8 +1,5 @@
-import json
-import os
 from datetime import datetime, timezone
 
-import xarray as xr
 from cop_ard_app.area_projection import stack_geometry, stack_mask
 from cop_ard_app.cmlp import stack_cmlp
 from cop_ard_app.coreg import finalize_coreg, stack_coregistration
@@ -22,6 +19,7 @@ from cop_ard_core.logger import logger
 from eopf.computing import EOProcessingUnit
 
 from cop_ard_processor.breakpoints import resumable_breakpoint
+from cop_ard_processor.preflight import PreflightError, run_preflight
 from cop_ard_processor.utils import (
     _get_slcs_path,
     _is_multiburst,
@@ -44,10 +42,34 @@ class Ingestion(EOProcessingUnit):
     populates EOPF-compliant `processing_history` metadata.
     """
 
+    PROCESSOR_NAME = "Ingestion"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required for ingestion."""
         return ["REFDB"]
+
+    @classmethod
+    def preflight(cls, inputs, adfs=None, **kwargs):
+        """Validate inputs, ADFs and parameters before running the unit.
+
+        Runs the layer-1 preflight engine on the call arguments and raises
+        `PreflightError` (a `ValueError`) carrying every violation when the
+        checks do not pass.
+
+        Parameters
+        ----------
+        inputs : dict
+            Dictionary of input products supplied by the workflow orchestrator.
+        adfs : dict, optional
+            Dictionary mapping ADF types (e.g., 'ETAD', 'ORB', 'REFDB') to their file paths.
+        **kwargs : dict
+            Execution overrides and configuration settings (same as `run`).
+        """
+        violations = run_preflight(inputs, adfs, **kwargs)
+        if violations:
+            raise PreflightError(violations)
 
     @log_time("Ingestion Unit", logger)
     @resumable_breakpoint(identifier="Ingestion")
@@ -85,6 +107,8 @@ class Ingestion(EOProcessingUnit):
             If `input_slcs_files` is missing or if mandatory `reference_id` is missing
             for non-multiburst acquisitions when `recompute=False`.
         """
+        Ingestion.preflight(inputs, adfs, **kwargs)
+
         input_slcs_files = kwargs.get("input_slcs_files")
         if input_slcs_files is None:
             raise ValueError("input_slcs_files must be provided via processing parameters (kwargs).")
@@ -247,6 +271,9 @@ class ReferenceDEM(EOProcessingUnit):
     to match the spatial radar grid and coordinate system of the input SLC stack.
     """
 
+    PROCESSOR_NAME = "ReferenceDEM"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input data products required by this unit."""
@@ -256,6 +283,18 @@ class ReferenceDEM(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB", "DEM"]
+
+    @classmethod
+    def preflight(cls, inputs, adfs=None, **kwargs):
+        """Validate inputs and parameters before running the unit.
+
+        Runs the layer-1 preflight engine on the call arguments and raises
+        `PreflightError` (a `ValueError`) carrying every violation when the
+        checks do not pass.
+        """
+        violations = run_preflight(inputs, adfs, unit_name=cls.__name__, **kwargs)
+        if violations:
+            raise PreflightError(violations, unit=cls.__name__)
 
     @log_time("ReferenceDEM Unit", logger)
     @resumable_breakpoint(identifier="ReferenceDEM")
@@ -287,6 +326,8 @@ class ReferenceDEM(EOProcessingUnit):
         KeyError
             If mandatory `"slcs"` dataset or mandatory ADFs are missing.
         """
+        ReferenceDEM.preflight(inputs, adfs, **kwargs)
+
         # 1. Extract base inputs and resolve instrument mode
         slcs = inputs["slcs"]
         all_pararams = slcs.attrs["params"]
@@ -387,6 +428,9 @@ class ReferenceGeometry(EOProcessingUnit):
     and masks (layover, shadow) to be stored in the static working directory.
     """
 
+    PROCESSOR_NAME = "ReferenceGeometry"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input dataset keys required by this unit."""
@@ -396,6 +440,18 @@ class ReferenceGeometry(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
+
+    @classmethod
+    def preflight(cls, inputs, adfs=None, **kwargs):
+        """Validate inputs and parameters before running the unit.
+
+        Runs the layer-1 preflight engine on the call arguments and raises
+        `PreflightError` (a `ValueError`) carrying every violation when the
+        checks do not pass.
+        """
+        violations = run_preflight(inputs, adfs, unit_name=cls.__name__, **kwargs)
+        if violations:
+            raise PreflightError(violations, unit=cls.__name__)
 
     @log_time("ReferenceGeometry Unit", logger)
     @resumable_breakpoint(identifier="ReferenceGeometry", expected_outputs=2)
@@ -425,6 +481,8 @@ class ReferenceGeometry(EOProcessingUnit):
         KeyError
             If mandatory inputs ('slcs', 'dem') are missing.
         """
+        ReferenceGeometry.preflight(inputs, adfs, **kwargs)
+
         # 1. Extract base inputs and preserve exact metadata flow
         slcs = inputs["slcs"]
         dem_tree = inputs["dem"]
@@ -536,6 +594,9 @@ class Coregistration(EOProcessingUnit):
     ionospheric phase estimation, and Enhanced Spectral Diversity (ESD) corrections.
     """
 
+    PROCESSOR_NAME = "Coregistration"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input datasets required by this unit."""
@@ -545,6 +606,18 @@ class Coregistration(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
+
+    @classmethod
+    def preflight(cls, inputs, adfs=None, **kwargs):
+        """Validate inputs and parameters before running the unit.
+
+        Runs the layer-1 preflight engine on the call arguments and raises
+        `PreflightError` (a `ValueError`) carrying every violation when the
+        checks do not pass.
+        """
+        violations = run_preflight(inputs, adfs, unit_name=cls.__name__, **kwargs)
+        if violations:
+            raise PreflightError(violations, unit=cls.__name__)
 
     @log_time("Coregistration Unit", logger)
     @resumable_breakpoint(identifier="Coregistration", expected_outputs=2)
@@ -574,6 +647,8 @@ class Coregistration(EOProcessingUnit):
         KeyError
             If mandatory inputs or configurations are missing.
         """
+        Coregistration.preflight(inputs, adfs, **kwargs)
+
         # 1. Extract base inputs and retain upstream pipeline parameters
         slcs = inputs["slcs"]
         dem_tree = inputs["dem"]
@@ -923,6 +998,9 @@ class ReferenceUpdate(EOProcessingUnit):
     database with newly identified stable acquisitions without outputting a full CMLP product tree.
     """
 
+    PROCESSOR_NAME = "ReferenceUpdate"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input datasets required by this unit."""
@@ -932,6 +1010,18 @@ class ReferenceUpdate(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
+
+    @classmethod
+    def preflight(cls, inputs, adfs=None, **kwargs):
+        """Validate inputs and parameters before running the unit.
+
+        Runs the layer-1 preflight engine on the call arguments and raises
+        `PreflightError` (a `ValueError`) carrying every violation when the
+        checks do not pass.
+        """
+        violations = run_preflight(inputs, adfs, unit_name=cls.__name__, **kwargs)
+        if violations:
+            raise PreflightError(violations, unit=cls.__name__)
 
     @log_time("ReferenceUpdate Unit", logger)
     @resumable_breakpoint(identifier="ReferenceUpdate", expected_outputs=2)
@@ -961,6 +1051,8 @@ class ReferenceUpdate(EOProcessingUnit):
         KeyError
             If mandatory inputs or configuration attributes are missing.
         """
+        ReferenceUpdate.preflight(inputs, adfs, **kwargs)
+
         # 1. Extract base inputs and retain upstream pipeline parameters
         slcs = inputs["slcs"]
         all_params = slcs.attrs["params"]
@@ -1050,6 +1142,9 @@ class CMLP(EOProcessingUnit):
     acquisitions, updates the reference database, and generates updated stack products.
     """
 
+    PROCESSOR_NAME = "CMLP"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input datasets required by this unit."""
@@ -1059,6 +1154,18 @@ class CMLP(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
+
+    @classmethod
+    def preflight(cls, inputs, adfs=None, **kwargs):
+        """Validate inputs and parameters before running the unit.
+
+        Runs the layer-1 preflight engine on the call arguments and raises
+        `PreflightError` (a `ValueError`) carrying every violation when the
+        checks do not pass.
+        """
+        violations = run_preflight(inputs, adfs, unit_name=cls.__name__, **kwargs)
+        if violations:
+            raise PreflightError(violations, unit=cls.__name__)
 
     @log_time("CMLP Unit", logger)
     @resumable_breakpoint(identifier="CMLP", expected_outputs=3)
@@ -1089,6 +1196,8 @@ class CMLP(EOProcessingUnit):
         KeyError
             If mandatory inputs or configuration attributes are missing.
         """
+        CMLP.preflight(inputs, adfs, **kwargs)
+
         # 1. Extract base inputs and retain upstream pipeline parameters
         slcs = inputs["slcs"]
         all_params = slcs.attrs["params"]
@@ -1181,6 +1290,9 @@ class Geocoding(EOProcessingUnit):
     This unit resamples and warps the  CMLP stack onto the target geographic grid using specified resampling kernels and pixel spacing.
     """
 
+    PROCESSOR_NAME = "Geocoding"
+    PROCESSOR_VERSION = "0.0.1"
+
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input datasets required by this unit."""
@@ -1190,6 +1302,18 @@ class Geocoding(EOProcessingUnit):
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory Auxiliary Data Files (ADFs) required by this unit."""
         return ["REFDB"]
+
+    @classmethod
+    def preflight(cls, inputs, adfs=None, **kwargs):
+        """Validate inputs and parameters before running the unit.
+
+        Runs the layer-1 preflight engine on the call arguments and raises
+        `PreflightError` (a `ValueError`) carrying every violation when the
+        checks do not pass.
+        """
+        violations = run_preflight(inputs, adfs, unit_name=cls.__name__, **kwargs)
+        if violations:
+            raise PreflightError(violations, unit=cls.__name__)
 
     @log_time("Geocoding Unit", logger)
     @resumable_breakpoint(identifier="Geocoding")
@@ -1221,6 +1345,8 @@ class Geocoding(EOProcessingUnit):
         KeyError
             If mandatory inputs or configuration attributes are missing.
         """
+        Geocoding.preflight(inputs, adfs, **kwargs)
+
         # 1. Extract base inputs and retain upstream pipeline parameters
         cmlp_tree = inputs["cmlp"]
         slcs = inputs["slcs"]

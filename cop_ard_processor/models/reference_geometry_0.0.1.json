@@ -1,0 +1,46 @@
+{
+  "available_modes": [
+    "default"
+  ],
+  "default_mode": "default",
+  "modes_config": {
+    "default": {
+      "inputs": {
+        "slcs": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        },
+        "dem": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        }
+      },
+      "adfs": {
+        "REFDB": {
+          "min_occurs": 1,
+          "spec": {}
+        }
+      },
+      "outputs": {},
+      "parameters": {
+        "recompute": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "enable_dask": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "facility": {
+          "required": false,
+          "value_type": "str"
+        },
+        "chunks_geo_grid": {
+          "required": false
+        }
+      }
+    }
+  }
+}

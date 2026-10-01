@@ -1,0 +1,70 @@
+{
+  "available_modes": [
+    "default"
+  ],
+  "default_mode": "default",
+  "modes_config": {
+    "default": {
+      "inputs": {
+        "slcs": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 1
+        },
+        "dem": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 0
+        },
+        "simulation_ref": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 0
+        },
+        "simulation_ml": {
+          "type": "product",
+          "spec": {},
+          "min_occurs": 0
+        }
+      },
+      "adfs": {
+        "REFDB": {
+          "min_occurs": 1,
+          "spec": {}
+        }
+      },
+      "outputs": {},
+      "parameters": {
+        "posting": {
+          "required": false
+        },
+        "memory_param": {
+          "required": false,
+          "value_type": "float"
+        },
+        "coherence_threshold": {
+          "required": false,
+          "value_type": "float",
+          "min_value": 0,
+          "max_value": 1
+        },
+        "stable_interval_days": {
+          "required": false,
+          "value_type": "int"
+        },
+        "max_past_stable_history": {
+          "required": false,
+          "value_type": "int"
+        },
+        "enable_dask": {
+          "required": false,
+          "value_type": "bool"
+        },
+        "facility": {
+          "required": false,
+          "value_type": "str"
+        }
+      }
+    }
+  }
+}
