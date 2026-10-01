@@ -1,0 +1,12 @@
+project:
+  type: default
+  output-dir: ../docs
+
+format:
+  html:
+    page-layout: full
+    code-fold: true
+    code-summary: "Show Python Code"
+    fig-format: svg
+    toc: true
+    theme: cosmo

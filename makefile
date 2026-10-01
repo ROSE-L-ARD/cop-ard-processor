@@ -8,7 +8,7 @@ GRID_URL := https://cdn.proj.org/us_nga_egm08_25.tif
 GRID_FILE := us_nga_egm08_25.tif
 GRID_ALIAS := Und_min1x1_egm2008_isw=82_WGS84_TideFree
 
-.PHONY: all proj format lint security complexity typecheck check
+.PHONY: all proj format lint security complexity typecheck check docs
 
 all: format check
 
@@ -48,3 +48,7 @@ cslc-qualification-notebook:
 	uv venv --python 3.12 .venv-qual --clear
 	uv pip install --python .venv-qual -r notebooks/cslc_qualification.txt
 	. .venv-qual/bin/activate
+	
+docs:
+	@echo "Rendering Quarto reports..."
+	cd notebooks && quarto render cslc_qualification_esd.ipynb
