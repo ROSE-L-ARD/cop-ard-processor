@@ -42,3 +42,9 @@ typecheck:
 	uv run --extra typing --frozen python -m mypy $(SOURCES) --allow-redefinition
 
 check: lint security complexity typecheck
+
+
+cslc-qualification-notebook:
+	uv venv --python 3.12 .venv-qual --clear
+	uv pip install --python .venv-qual -r notebooks/cslc_qualification.txt
+	. .venv-qual/bin/activate
