@@ -51,4 +51,5 @@ cslc-qualification-notebook:
 	
 docs:
 	@echo "Rendering Quarto reports..."
-	cd notebooks && quarto render cslc_qualification_esd.ipynb
+	quarto render notebooks/cslc_qualification.ipynb
+	quarto render notebooks/cslc_qualification_esd.ipynb

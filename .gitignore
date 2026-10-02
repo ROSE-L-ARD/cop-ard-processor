@@ -7,7 +7,10 @@ __pycache__
 *.so
 
 # Distribution / packaging
+.quarto/
+**/*.quarto_ipynb
 .secrets/
+internal_scripts/
 .Python
 build/
 scratch
@@ -140,3 +143,5 @@ dmypy.json
 
 #MacOs support
 .DS_Store
+
+/.quarto/

@@ -1,0 +1,18 @@
+setuptools>=65.0.0,<81
+jupyter
+matplotlib
+python-dotenv
+tifffile==2025.10.16
+zarr==3.1.5
+fsspec==2025.10.0
+xarray==2025.11.0
+pandas==2.3.3
+dask==2025.11.0
+distributed==2025.11.0
+s3fs==2025.10.0
+arepytools @ git+https://github.com/aresys-srl/arepytools.git@774743196d6d1ab0610297038795128ae2abd5bd
+arepyextras-iers_solid_tides @ git+https://github.com/aresys-srl/arepyextras-iers_solid_tides.git@068eaa5c6cf59e1701a2439512340d7237bad31e
+arepyextras-perturbations @ git+https://github.com/aresys-srl/arepyextras-perturbations.git@bf6b58b64d91775b29762f288cd96541b632e2df
+arepyextras-eo_products @ git+https://github.com/aresys-srl/arepyextras-eo_products.git@686aaef9592cfcccc9b3bf706061c369e788b511
+arepyextras-quality @ git+https://github.com/aresys-srl/arepyextras-quality.git@b72945abbc2f7b945156e640c69be710d9d48b4d
+sct @ git+https://github.com/aresys-srl/sct.git@f96caa3d6b1b0f114770af6f79339c9e8e3b7c38

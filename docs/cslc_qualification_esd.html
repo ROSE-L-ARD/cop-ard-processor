@@ -70,10 +70,118 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="cslc_qualification_esd_files/libs/quarto-html/tippy.umd.min.js"></script>
 <script src="cslc_qualification_esd_files/libs/quarto-html/anchor.min.js"></script>
 <link href="cslc_qualification_esd_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="cslc_qualification_esd_files/libs/quarto-html/quarto-syntax-highlighting-46f66b053e56abd73bb6e954d61a315b.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="cslc_qualification_esd_files/libs/quarto-html/quarto-syntax-highlighting-46f66b053e56abd73bb6e954d61a315b.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="cslc_qualification_esd_files/libs/quarto-html/quarto-syntax-highlighting-dark-22b4aaf4c2978829df3684e8f2c068db.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="cslc_qualification_esd_files/libs/quarto-html/quarto-syntax-highlighting-46f66b053e56abd73bb6e954d61a315b.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="cslc_qualification_esd_files/libs/bootstrap/bootstrap.min.js"></script>
 <link href="cslc_qualification_esd_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="cslc_qualification_esd_files/libs/bootstrap/bootstrap-133a0a4dda30ced7f07b755c880e46a0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="cslc_qualification_esd_files/libs/bootstrap/bootstrap-133a0a4dda30ced7f07b755c880e46a0.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="cslc_qualification_esd_files/libs/bootstrap/bootstrap-dark-655054090ada0c38061b0089b867a08e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="cslc_qualification_esd_files/libs/bootstrap/bootstrap-133a0a4dda30ced7f07b755c880e46a0.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<style>
+/* 1. HIDE CODE BLOCKS BY DEFAULT */
+div.cell-code, pre.sourceCode, .code-annotation-code-cell {
+  display: none !important;
+}
+
+body.show-code div.cell-code,
+body.show-code pre.sourceCode,
+body.show-code .code-annotation-code-cell {
+  display: block !important;
+}
+
+/* 2. CODE TOGGLE BUTTON STYLING */
+#btn-toggle-code {
+  position: fixed;
+  top: 15px;
+  right: 140px; /* Positioned left of theme toggle */
+  z-index: 99999;
+  padding: 6px 14px;
+  height: 36px;
+  background-color: #ffffff;
+  color: #212529;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  transition: all 0.2s ease-in-out;
+}
+
+#btn-toggle-code:hover {
+  background-color: #f8f9fa;
+}
+
+/* 3. QUARTO THEME TOGGLE BUTTON STYLING (Light / Dark) */
+.quarto-color-scheme-toggle,
+#quarto-color-scheme-toggle {
+  position: fixed !important;
+  top: 15px !important;
+  right: 20px !important;
+  z-index: 99999 !important;
+  height: 36px !important;
+  padding: 6px 12px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  border: 1px solid #ced4da !important;
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* Add a text label "Theme" after the icon */
+.quarto-color-scheme-toggle::after,
+#quarto-color-scheme-toggle::after {
+  content: "Theme";
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Make the theme icon larger */
+.quarto-color-scheme-toggle i,
+#quarto-color-scheme-toggle i {
+  font-size: 16px !important;
+}
+
+/* 4. DARK MODE STYLES FOR BOTH BUTTONS */
+[data-bs-theme="dark"] #btn-toggle-code,
+body.quarto-dark #btn-toggle-code,
+[data-bs-theme="dark"] .quarto-color-scheme-toggle,
+body.quarto-dark .quarto-color-scheme-toggle,
+[data-bs-theme="dark"] #quarto-color-scheme-toggle,
+body.quarto-dark #quarto-color-scheme-toggle {
+  background-color: #2b3035 !important;
+  color: #f8f9fa !important;
+  border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] #btn-toggle-code:hover,
+body.quarto-dark #btn-toggle-code:hover,
+[data-bs-theme="dark"] .quarto-color-scheme-toggle:hover,
+body.quarto-dark .quarto-color-scheme-toggle:hover,
+[data-bs-theme="dark"] #quarto-color-scheme-toggle:hover,
+body.quarto-dark #quarto-color-scheme-toggle:hover {
+  background-color: #3e444a !important;
+}
+
+/* 5. ACTIVE STATE FOR CODE BUTTON (Bright Blue) */
+body.show-code #btn-toggle-code {
+  background-color: #0d6efd !important;
+  color: #ffffff !important;
+  border-color: #0a58ca !important;
+  box-shadow: 0 0 8px rgba(13, 110, 253, 0.5);
+}
+</style>
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -107,7 +215,169 @@ window.Quarto = {
 
 </head>
 
-<body class="quarto-light">
+<body class="quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
 
 <div id="quarto-content" class="page-columns page-rows-contents page-layout-full">
 <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
@@ -130,6 +400,22 @@ window.Quarto = {
 </nav>
 </div>
 <main class="content column-page-left" id="quarto-document-content">
+
+<button id="btn-toggle-code" onclick="toggleAllCode()" title="Click to show or hide all code blocks">
+  <span style="font-family: monospace; font-weight: bold;">&lt;/&gt;</span>
+  <span id="btn-toggle-text">Show Code</span>
+</button>
+<script>
+function toggleAllCode() {
+  document.body.classList.toggle('show-code');
+  var btnText = document.getElementById('btn-toggle-text');
+  if (document.body.classList.contains('show-code')) {
+    btnText.innerText = 'Hide Code';
+  } else {
+    btnText.innerText = 'Show Code';
+  }
+}
+</script>
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
@@ -163,8 +449,6 @@ window.Quarto = {
 
 
 <div id="df0743c7" class="cell">
-<details class="code-fold">
-<summary>Show Python Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copyright 2026 B-Open</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Licensed under the Apache License, Version 2.0 (the "License");</span></span>
@@ -178,7 +462,6 @@ window.Quarto = {
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span></span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># See the License for the specific language governing permissions and</span></span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># limitations under the License.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 </div>
 <section id="introduction-and-scope" class="level1">
 <h1>Introduction and Scope</h1>
@@ -203,8 +486,7 @@ Test Case Specifications &amp; ESD Quality Metrics
 </h3>
 <table class="table table-bordered table-striped" style="width: 100%;">
 <thead>
-<tr style="background-color: #f8f9fa;">
-<th style="width: 25%;">
+<tr><th style="width: 25%;">
 Field
 </th>
 <th style="width: 75%;">
@@ -272,8 +554,6 @@ CSLC temporal stacks generated from Sentinel-1 IW acquisition dates over the Sur
 </tbody>
 </table>
 <div id="72a0eee8" class="cell" data-execution_count="11">
-<details class="code-fold">
-<summary>Show Python Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> xarray <span class="im">as</span> xr</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
@@ -289,17 +569,11 @@ CSLC temporal stacks generated from Sentinel-1 IW acquisition dates over the Sur
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>colors <span class="op">=</span> [cmap(i) <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(cmap.N)]</span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>markers <span class="op">=</span> [<span class="st">"s"</span>, <span class="st">"^"</span>, <span class="st">"v"</span>, <span class="st">"P"</span>, <span class="st">"*"</span>, <span class="st">"X"</span>, <span class="st">"d"</span>]</span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>ls <span class="op">=</span> [<span class="st">"--"</span>, <span class="st">"-"</span>, <span class="st">"dotted"</span>, <span class="st">"-."</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 </div>
 <div id="6e4884b7" class="cell">
-<details class="code-fold">
-<summary>Show Python Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>client <span class="op">=</span> create_client(<span class="st">"LOCAL"</span>, <span class="dv">8</span>, <span class="dv">0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 </div>
 <div id="f59a46f1" class="cell">
-<details class="code-fold">
-<summary>Show Python Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>cslc_path_003 <span class="op">=</span> <span class="st">"s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/OUTPUT/TC-ST-PERF-003/CSLC"</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>cslc_path_004 <span class="op">=</span> <span class="st">"s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/OUTPUT/TC-ST-PERF-004/CSLC"</span></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>reference_path <span class="op">=</span> <span class="st">"s3://bopen-sar/ARD-ROSE-L/SENTINEL/Surat/009/REF_DB/reference_db_static"</span></span>
@@ -307,11 +581,8 @@ CSLC temporal stacks generated from Sentinel-1 IW acquisition dates over the Sur
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>esd_path <span class="op">=</span> <span class="st">"/data/tmp/ESD"</span></span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>multiburst <span class="op">=</span> <span class="va">True</span></span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>enable_dask <span class="op">=</span> <span class="va">True</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 </div>
 <div id="17c28d9b" class="cell">
-<details class="code-fold">
-<summary>Show Python Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> read_burst(path_burst):</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    name <span class="op">=</span> path_burst[<span class="op">-</span><span class="dv">9</span>:]</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    cslc <span class="op">=</span> read(<span class="ss">f"</span><span class="sc">{</span>path_burst<span class="sc">}</span><span class="ss">/measurements"</span>, consolidated<span class="op">=</span><span class="va">False</span>).cslc.drop_attrs()</span>
@@ -331,11 +602,8 @@ CSLC temporal stacks generated from Sentinel-1 IW acquisition dates over the Sur
 <span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>        .assign_attrs(attrs)</span>
 <span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    ).sortby(<span class="st">"acquisition_date"</span>)</span>
 <span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (n, c)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 </div>
 <div id="f85e9c38" class="cell">
-<details class="code-fold">
-<summary>Show Python Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>cslc_paths <span class="op">=</span> {</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"003"</span>: cslc_path_003,</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"004"</span>: cslc_path_004,</span>
@@ -388,22 +656,16 @@ CSLC temporal stacks generated from Sentinel-1 IW acquisition dates over the Sur
 <span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>        ).assign_coords({<span class="st">"acquisition_date"</span>: sec_date})</span>
 <span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>        esd_res <span class="op">=</span> write(esd_res, <span class="ss">f"</span><span class="sc">{</span>esd_path<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span>case_id<span class="sc">}</span><span class="ss">/esd_</span><span class="sc">{</span>sec_date<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>        ref_path <span class="op">=</span> sec_path</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 </div>
 <div id="251d2d32" class="cell">
-<details class="code-fold">
-<summary>Show Python Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>esd_003 <span class="op">=</span> xr.concat(</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    [read(k, as_type<span class="op">=</span><span class="st">"xr.Dataset"</span>) <span class="cf">for</span> k <span class="kw">in</span> glob(<span class="ss">f"</span><span class="sc">{</span>esd_path<span class="sc">}</span><span class="ss">/003/esd_20*"</span>)], dim<span class="op">=</span><span class="st">"acquisition_id"</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>).sortby(<span class="st">"acquisition_date"</span>)</span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>esd_004 <span class="op">=</span> xr.concat(</span>
 <span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    [read(k, as_type<span class="op">=</span><span class="st">"xr.Dataset"</span>) <span class="cf">for</span> k <span class="kw">in</span> glob(<span class="ss">f"</span><span class="sc">{</span>esd_path<span class="sc">}</span><span class="ss">/004/esd_20*"</span>)], dim<span class="op">=</span><span class="st">"acquisition_id"</span></span>
 <span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>).sortby(<span class="st">"acquisition_date"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 </div>
 <div id="cd88f8c7" class="cell" data-execution_count="12">
-<details class="code-fold">
-<summary>Show Python Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.dates <span class="im">as</span> mdates</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -502,7 +764,6 @@ CSLC temporal stacks generated from Sentinel-1 IW acquisition dates over the Sur
 <span id="cb8-96"><a href="#cb8-96" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb8-97"><a href="#cb8-97" aria-hidden="true" tabindex="-1"></a>fig.savefig(<span class="st">"../docs/figures/esd_performance_comparison.svg"</span>, <span class="bu">format</span><span class="op">=</span><span class="st">"svg"</span>, bbox_inches<span class="op">=</span><span class="st">"tight"</span>)</span>
 <span id="cb8-98"><a href="#cb8-98" aria-hidden="true" tabindex="-1"></a>plt.close(fig)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 </div>
 <p><img src="../docs/figures/esd_performance_comparison.svg" class="img-fluid"></p>
 </section>
@@ -531,8 +792,7 @@ Qualification Summary &amp; Verdict
 </h3>
 <table class="table table-bordered table-hover" style="width: 100%; text-align: center; vertical-align: middle; margin-top: 15px;">
 <thead>
-<tr style="background-color: #f8f9fa;">
-<th style="text-align: left; width: 18%;">
+<tr><th style="text-align: left; width: 18%;">
 Test Case ID
 </th>
 <th style="width: 22%;">
@@ -606,6 +866,19 @@ APP-PERF-007
 <!-- /main column -->
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
     const icon = "";
     const anchorJS = new window.AnchorJS();
     anchorJS.options = {
