@@ -4,13 +4,14 @@ project:
 
 format:
   html:
+    embed-resources: true
     page-layout: full
-    echo: true                 # Generates HTML for code blocks
+    echo: true
     fig-format: svg
     toc: true
     theme:
       light: cosmo
-      dark: darkly             # Dark mode theme
+      dark: darkly
 
     include-in-header:
       text: |
@@ -30,7 +31,7 @@ format:
         #btn-toggle-code {
           position: fixed;
           top: 15px;
-          right: 140px; /* Positioned left of theme toggle */
+          right: 140px;
           z-index: 99999;
           padding: 6px 14px;
           height: 36px;
@@ -52,7 +53,7 @@ format:
           background-color: #f8f9fa;
         }
 
-        /* 3. QUARTO THEME TOGGLE BUTTON STYLING (Light / Dark) */
+        /* 3. QUARTO THEME TOGGLE BUTTON STYLING */
         .quarto-color-scheme-toggle,
         #quarto-color-scheme-toggle {
           position: fixed !important;
@@ -75,7 +76,6 @@ format:
           transition: all 0.2s ease-in-out !important;
         }
 
-        /* Add a text label "Theme" after the icon */
         .quarto-color-scheme-toggle::after,
         #quarto-color-scheme-toggle::after {
           content: "Theme";
@@ -83,7 +83,6 @@ format:
           font-weight: 500;
         }
 
-        /* Make the theme icon larger */
         .quarto-color-scheme-toggle i,
         #quarto-color-scheme-toggle i {
           font-size: 16px !important;
@@ -110,7 +109,7 @@ format:
           background-color: #3e444a !important;
         }
 
-        /* 5. ACTIVE STATE FOR CODE BUTTON (Bright Blue) */
+        /* 5. ACTIVE STATE FOR CODE BUTTON */
         body.show-code #btn-toggle-code {
           background-color: #0d6efd !important;
           color: #ffffff !important;
@@ -136,3 +135,4 @@ format:
           }
         }
         </script>
+
