@@ -8,16 +8,19 @@ GRID_URL := https://cdn.proj.org/us_nga_egm08_25.tif
 GRID_FILE := us_nga_egm08_25.tif
 GRID_ALIAS := Und_min1x1_egm2008_isw=82_WGS84_TideFree
 
-.PHONY: all proj format lint security complexity typecheck check docs
+.PHONY: all install proj format lint security complexity typecheck check docs
 
 all: format check
+
+install: proj
+	uv sync
 
 proj:
 	@echo "PyPROJ target directory: $(PROJ_DATA_DIR)"
 	@mkdir -p "$(PROJ_DATA_DIR)"
 	@if [ ! -f "$(PROJ_DATA_DIR)/$(GRID_FILE)" ]; then \
 		echo "Downloading $(GRID_FILE)..."; \
-		curl -sSL "$(GRID_URL)" -o "$(PROJ_DATA_DIR)/$(GRID_FILE)"; \
+		curl -fsSL "$(GRID_URL)" -o "$(PROJ_DATA_DIR)/$(GRID_FILE)"; \
 	else \
 		echo "$(GRID_FILE) already present."; \
 	fi
