@@ -75,4 +75,4 @@ pythonpath = ["."]
 url = "https://pypi.org/simple"
 
 [tool.uv.sources]
-cop-ard-app = { git = "https://github.com/bopen/cop-ard-app.git" }
+cop-ard-app = { git = "https://github.com/ROSE-L-ARD/cop-ard-app.git" }

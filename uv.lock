@@ -706,7 +706,7 @@ wheels = [
 [[package]]
 name = "cop-ard-app"
 version = "0.0.1"
-source = { git = "https://github.com/bopen/cop-ard-app.git#bedac366e1b698d7ebcde305d3ca148d284b82bb" }
+source = { git = "https://github.com/ROSE-L-ARD/cop-ard-app.git#4ed3f6d8cee3912acd002159d3c5a03d9a2756ec" }
 dependencies = [
     { name = "cop-ard-core" },
     { name = "dask" },
@@ -716,7 +716,7 @@ dependencies = [
 [[package]]
 name = "cop-ard-core"
 version = "0.0.1"
-source = { git = "https://github.com/bopen/cop-ard-core.git#84e1024ff52422ce2f1fa8c0582a792efe63a374" }
+source = { git = "https://github.com/ROSE-L-ARD/cop-ard-core.git#57fd0f07e77eaac5df147a86d97f9657408bb941" }
 dependencies = [
     { name = "astropy" },
     { name = "dask" },
@@ -793,7 +793,7 @@ typing = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cop-ard-app", git = "https://github.com/bopen/cop-ard-app.git" },
+    { name = "cop-ard-app", git = "https://github.com/ROSE-L-ARD/cop-ard-app.git" },
     { name = "eopf", specifier = ">=3.0.0" },
     { name = "eopf", extras = ["cluster-plugin"], marker = "extra == 'cluster-plugin'", specifier = ">=3.0.0" },
     { name = "eopf", extras = ["complexity"], marker = "extra == 'complexity'", specifier = ">=3.0.0" },
