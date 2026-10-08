@@ -270,9 +270,7 @@ def apply_rules(
                     Violation(rule.name, f"value {value!r} is not a string and cannot match pattern {rule.pattern!r}")
                 )
             elif re.fullmatch(rule.pattern, value) is None:
-                violations.append(
-                    Violation(rule.name, f"value {value!r} does not match pattern {rule.pattern!r}")
-                )
+                violations.append(Violation(rule.name, f"value {value!r} does not match pattern {rule.pattern!r}"))
 
         if rule.checker is not None:
             violations.extend(Violation(rule.name, detail) for detail in rule.checker(value))
@@ -577,9 +575,7 @@ def _resolve_mode(inputs: dict, kwargs: dict, mode_source: str) -> tuple[str | N
                 try:
                     return get_instrument_mode(files), []
                 except Exception as exc:  # report any data problem, never crash the preflight
-                    return None, [
-                        Violation("input_slcs_files", f"could not determine the instrument mode: {exc}")
-                    ]
+                    return None, [Violation("input_slcs_files", f"could not determine the instrument mode: {exc}")]
         return None, []
 
     try:
@@ -629,13 +625,8 @@ class EtadStackValidator:
         "gridSamplingRange",
     )
     REQUIRED_BURST_VARS = (
-        "azimuthExtent",
-        "rangeExtent",
         "sumOfCorrectionsAz",
         "sumOfCorrectionsRg",
-        "dopplerRangeShiftRg",
-        "geodeticCorrectionRg",
-        "ionosphericCorrectionRg",
     )
 
     def validate(self, value: Any, violations: list[Violation]) -> None:

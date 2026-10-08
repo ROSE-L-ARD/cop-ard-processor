@@ -1,7 +1,5 @@
 {
-  "available_modes": [
-    "default"
-  ],
+  "available_modes": ["default"],
   "default_mode": "default",
   "modes_config": {
     "default": {
@@ -30,6 +28,10 @@
       "adfs": {
         "REFDB": {
           "min_occurs": 1,
+          "spec": {}
+        },
+        "IONO": {
+          "min_occurs": 0,
           "spec": {}
         }
       },
