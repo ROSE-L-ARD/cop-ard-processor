@@ -32,6 +32,7 @@ RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-PERF-008" / "2000-01-01-esd.yaml"
 
 
+
 @pytest.mark.ard
 def test_payload():
     """E2E Functional Test TC-ST-FUNC-011"""
@@ -51,12 +52,7 @@ def test_payload():
             storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
             storage_opts = is_local(output_store["path"], storage_opts)
 
-            data = xr.open_datatree(
-                output_store["path"],
-                engine="zarr",
-                chunks={},
-                storage_options=storage_opts,
-            )
+            data = xr.open_datatree(output_store["path"], engine="zarr", chunks={}, storage_options=storage_opts)
 
             if output not in ["cslcs", "gmlp"]:
                 updates[output] = data
@@ -90,3 +86,4 @@ def test_payload():
 
     # 4. Check external orbit bypass
     assert any("Skipping external orbit" in event for event in captured_events), "Skip trace for 'external orbit' missing."
+

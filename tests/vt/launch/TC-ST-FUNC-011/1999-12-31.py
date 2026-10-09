@@ -120,4 +120,3 @@ def test_payload():
             f"{refdb_path}/reference_db_dynamic",
             reference_id=reference_id,
         )
-

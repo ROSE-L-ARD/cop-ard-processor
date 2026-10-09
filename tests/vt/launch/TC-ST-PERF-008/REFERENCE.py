@@ -29,6 +29,7 @@ RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = f"{RP_BASE_PATH}/triggering/TC-ST-PERF-008/REFERENCE.yaml"
 
 
+
 @pytest.mark.ard
 def test_payload():
 
@@ -37,3 +38,4 @@ def test_payload():
 
     # 1. Execute full CSLC chain
     output_stores = run_payload(payload, dry_run=False)
+

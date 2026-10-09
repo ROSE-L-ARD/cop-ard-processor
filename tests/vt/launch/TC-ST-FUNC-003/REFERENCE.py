@@ -37,4 +37,3 @@ def test_payload():
 
     # 1. Execute full CSLC chain
     output_stores = run_payload(payload, dry_run=False)
-

@@ -18,10 +18,12 @@ import pytest
 import yaml
 from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
+
 from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-009" / "REFERENCE.yaml"
+
 
 @pytest.mark.ard
 def test_payload():
@@ -55,10 +57,9 @@ def test_payload():
             sm_mode_found = True
             break
         elif "mode" in str(log) and "'SM'" in str(log) or '"SM"' in str(log):
-             sm_mode_found = True
-             break
-             
+            sm_mode_found = True
+            break
+
     assert sm_mode_found, (
-         f"Pass Criteria Failed: The processor did not log 'SM' mode execution.\n"
-         f"Captured logs:\n{captured_logs_text}"
+        f"Pass Criteria Failed: The processor did not log 'SM' mode execution.\nCaptured logs:\n{captured_logs_text}"
     )

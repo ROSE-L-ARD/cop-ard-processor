@@ -32,10 +32,8 @@ yaml_path = f"{RP_BASE_PATH}/triggering/TC-ST-FUNC-002/REFERENCE.yaml"
 @pytest.mark.ard
 def test_payload():
 
-
     with open(yaml_path, encoding="utf-8") as f:
         payload = yaml.safe_load(f)
 
     # 1. Execute full CSLC chain
     output_stores = run_payload(payload, dry_run=False)
-    

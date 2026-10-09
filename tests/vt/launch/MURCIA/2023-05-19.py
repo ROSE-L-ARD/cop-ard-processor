@@ -13,18 +13,21 @@
 # limitations under the License.
 
 from pathlib import Path
+
 import pytest
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
+from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
+
 from cop_ard_processor.structure import check_ARD_outputs
 from scripts.run_payload import run_payload
-from cop_ard_app.utils import update_reference_database 
 
 RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = RP_BASE_PATH / "triggering" / "MURCIA" / "2023-05-19.yaml"
+
 
 @pytest.mark.ard
 def test_payload():

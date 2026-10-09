@@ -57,7 +57,9 @@ def test_payload():
 
                 if output == "cslcs":
                     pols = set(element.measurements.cslc.polarization.values.astype(str))
-                    assert pols == {"VV"}, f"Single-polarization check failed. Expected strictly {{'VV'}}, found: {pols}"
+                    assert pols == {"VV"}, (
+                        f"Single-polarization check failed. Expected strictly {{'VV'}}, found: {pols}"
+                    )
 
     captured_events = [str(log.get("event", "")) for log in captured]
     captured_logs_text = "\n".join(captured_events)

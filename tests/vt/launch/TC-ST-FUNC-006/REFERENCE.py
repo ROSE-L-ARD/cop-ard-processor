@@ -18,10 +18,12 @@ import pytest
 import yaml
 from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
+
 from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-006" / "REFERENCE.yaml"
+
 
 @pytest.mark.ard
 def test_payload():
@@ -54,9 +56,7 @@ def test_payload():
         # Check structured key directly if available in log payload
         if "dem_interpolation" in log:
             val = str(log["dem_interpolation"]).lower()
-            assert "linear" in val, (
-                f"Pass Criteria Failed: Expected 'dem_interpolation' to be 'linear', found '{val}'."
-            )
+            assert "linear" in val, f"Pass Criteria Failed: Expected 'dem_interpolation' to be 'linear', found '{val}'."
             interpolation_found = True
             break
         # Fallback check on string representation of event/log dictionary
@@ -72,7 +72,7 @@ def test_payload():
         f"Pass Criteria Failed: The 'dem_interpolation' parameter was not found in logged execution parameters.\n"
         f"Captured logs:\n{captured_logs_text}"
     )
-    
+
     # 5. Verify Stripmap (SM) mode detection
     sm_mode_found = False
     for log in captured:
@@ -80,10 +80,9 @@ def test_payload():
             sm_mode_found = True
             break
         elif "mode" in str(log) and "'SM'" in str(log) or '"SM"' in str(log):
-             sm_mode_found = True
-             break
-             
+            sm_mode_found = True
+            break
+
     assert sm_mode_found, (
-         f"Pass Criteria Failed: The processor did not log 'SM' mode execution.\n"
-         f"Captured logs:\n{captured_logs_text}"
+        f"Pass Criteria Failed: The processor did not log 'SM' mode execution.\nCaptured logs:\n{captured_logs_text}"
     )

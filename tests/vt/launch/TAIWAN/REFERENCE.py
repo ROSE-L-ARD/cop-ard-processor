@@ -18,10 +18,12 @@ import pytest
 import yaml
 from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
+
 from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = RP_BASE_PATH / "triggering" / "TAIWAN" / "REFERENCE.yaml"
+
 
 @pytest.mark.ard
 def test_payload():
@@ -35,4 +37,6 @@ def test_payload():
 
     mandatory_units = ["Ingestion Unit", "ReferenceDEM Unit", "ReferenceGeometry Unit"]
     for unit in mandatory_units:
-        assert any(f"Started : {unit}" in event for event in captured_events), f"Mandatory log trace 'Started : {unit}' missing."
+        assert any(f"Started : {unit}" in event for event in captured_events), (
+            f"Mandatory log trace 'Started : {unit}' missing."
+        )
