@@ -69,39 +69,136 @@ mkdir -p "$LOG_DIR"
 mkdir -p "$INPUT_DATA_DIR"
 
 # ==============================================================================
+# SPECIAL HANDLING: TC-ST-FUNC-003 (Start Podman Compose Dask Cluster)
+# ==============================================================================
+if [ "$TEST_NAME" = "TC-ST-FUNC-003" ] || [ "$TEST_NAME" = "TC-ST-003" ]; then
+    echo "=========================================="
+    echo "Starting Dask cluster via Podman Compose for $TEST_NAME..."
+    echo "=========================================="
+    COMPOSE_FILE="$LAUNCH_DIR/docker-compose.yml"
+
+    # Write docker-compose.yml template if not present in launch directory
+    if [ ! -f "$COMPOSE_FILE" ]; then
+        cat << 'EOF' > "$COMPOSE_FILE"
+x-base-node: &base-node
+  image: localhost/cop-ard-processor:latest
+  pull_policy: missing
+  user: root
+  shm_size: "2gb"
+  volumes:
+    - /data/SENTINEL1/SURAT:/data/SENTINEL1/SURAT:z
+
+x-worker-node: &worker-node
+  <<: *base-node
+  depends_on:
+    scheduler:
+      condition: service_healthy
+  deploy:
+    resources:
+      limits:
+        cpus: "4"
+        memory: 32G
+
+services:
+  scheduler:
+    <<: *base-node
+    command: dask scheduler
+    ports:
+      - "127.0.0.1:8786:8786"
+      - "127.0.0.1:8787:8787"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s = socket.socket(); s.connect(('127.0.0.1', 8786))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  worker-1:
+    <<: *worker-node
+    command: dask worker tcp://scheduler:8786 --nworkers 4 --nthreads 1 --memory-limit 8GB
+
+  worker-2:
+    <<: *worker-node
+    command: dask worker tcp://scheduler:8786 --nworkers 4 --nthreads 1 --memory-limit 8GB
+EOF
+    fi
+
+    # Determine whether 'podman compose' or 'podman-compose' is available
+    if podman compose version &>/dev/null; then
+        PODMAN_CMD="podman compose"
+    elif command -v podman-compose &>/dev/null; then
+        PODMAN_CMD="podman-compose"
+    else
+        echo "Error: Neither 'podman compose' nor 'podman-compose' binary was found."
+        exit 1
+    fi
+
+    echo "Spinning up Podman Compose services..."
+    $PODMAN_CMD -f "$COMPOSE_FILE" up -d
+
+    # Tear down cluster upon script termination or failure
+    trap '$PODMAN_CMD -f "$COMPOSE_FILE" down' EXIT
+
+    echo "Waiting for Dask scheduler (127.0.0.1:8786) to become ready..."
+    until python3 -c "import socket; s = socket.socket(); s.connect(('127.0.0.1', 8786))" 2>/dev/null; do
+        sleep 2
+    done
+    echo "✓ Dask cluster is active and healthy."
+fi
+
+# ==============================================================================
 # 1. BUILD ORDERED TEST LIST
-# Requirement: Run REFERENCE first (if enabled), then remaining tests chronologically
 # ==============================================================================
 
 TEST_LIST=()
 
-# Append 'REFERENCE' first ONLY if enabled by flag AND REFERENCE.py exists
-if [ "$RUN_REFERENCE" = true ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
-    TEST_LIST+=("REFERENCE")
-elif [ "$RUN_REFERENCE" = false ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
-    echo "ℹ REFERENCE.py found but skipped due to --skip-reference flag."
+if [ "$TEST_NAME" = "TC-ST-FUNC-014" ] || [ "$TEST_NAME" = "TC-ST-014" ]; then
+    # SPECIAL HANDLING: TC-ST-FUNC-014 runs REFERENCE.py first (if present), then run.sh
+    if [ "$RUN_REFERENCE" = true ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
+        TEST_LIST+=("REFERENCE")
+    elif [ "$RUN_REFERENCE" = false ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
+        echo "ℹ REFERENCE.py found but skipped due to --skip-reference flag."
+    fi
+
+    if [ -f "$LAUNCH_DIR/run.sh" ]; then
+        TEST_LIST+=("run")
+    else
+        echo "Error: Launch script '$LAUNCH_DIR/run.sh' not found for $TEST_NAME."
+        exit 1
+    fi
+else
+    # Append 'REFERENCE' first ONLY if enabled by flag AND REFERENCE.py exists
+    if [ "$RUN_REFERENCE" = true ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
+        TEST_LIST+=("REFERENCE")
+    elif [ "$RUN_REFERENCE" = false ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
+        echo "ℹ REFERENCE.py found but skipped due to --skip-reference flag."
+    fi
+
+    # Find all remaining .py test scripts, sort them alphabetically/chronologically
+    while IFS= read -r file; do
+        [ -z "$file" ] && continue
+        base=$(basename "$file" .py)
+        if [ "$base" != "REFERENCE" ]; then
+            TEST_LIST+=("$base")
+        fi
+    done < <(find "$LAUNCH_DIR" -maxdepth 1 -name "*.py" | sort)
 fi
 
-# Find all remaining .py test scripts, sort them alphabetically/chronologically,
-# and append them to the test queue (excluding REFERENCE to avoid duplicate runs)
-while IFS= read -r file; do
-    [ -z "$file" ] && continue
-    base=$(basename "$file" .py)
-    if [ "$base" != "REFERENCE" ]; then
-        TEST_LIST+=("$base")
-    fi
-done < <(find "$LAUNCH_DIR" -maxdepth 1 -name "*.py" | sort)
-
-# Fail early if no Python test files were detected in the queue
+# Fail early if no test files were detected in the queue
 if [ ${#TEST_LIST[@]} -eq 0 ]; then
-    echo "Error: No .py test files selected for execution in $LAUNCH_DIR"
+    echo "Error: No test files selected for execution in $LAUNCH_DIR"
     exit 1
 fi
 
 echo "=========================================="
 echo "Running test suite for: $TEST_NAME"
 echo "Run REFERENCE: $RUN_REFERENCE"
-echo "Execution queue (via pytest & uv run):"
+echo "Execution queue:"
 for t in "${TEST_LIST[@]}"; do
     echo "  - $t"
 done
@@ -114,7 +211,16 @@ echo "=========================================="
 
 for TEST_BASE in "${TEST_LIST[@]}"; do
     PY_FILE="$LAUNCH_DIR/${TEST_BASE}.py"
-    YAML_FILE="$TRIGGER_DIR/${TEST_BASE}.yaml"
+    
+    # Check trigger directory for either step-specific or test-wide YAML config
+    if [ -f "$TRIGGER_DIR/${TEST_BASE}.yaml" ]; then
+        YAML_FILE="$TRIGGER_DIR/${TEST_BASE}.yaml"
+    elif [ -f "$TRIGGER_DIR/${TEST_NAME}.yaml" ]; then
+        YAML_FILE="$TRIGGER_DIR/${TEST_NAME}.yaml"
+    else
+        YAML_FILE="$TRIGGER_DIR/${TEST_BASE}.yaml"
+    fi
+    
     LOG_FILE="$LOG_DIR/${TEST_BASE}.log"
 
     echo ""
@@ -162,7 +268,6 @@ def parse_input_item(item, input_base_dir):
     clean_item = item.rstrip('/')
     ext = os.path.splitext(clean_item)[1].lower()
 
-    # If it is a file inside a product folder (like .xemt for SAOCOM), download the entire parent directory
     if ext in ['.xemt', '.xml', '.hdr', '.nc']:
         s3_parent = os.path.dirname(clean_item)
         parent_name = os.path.basename(s3_parent)
@@ -179,7 +284,6 @@ def parse_input_item(item, input_base_dir):
             'local_cleanup_path': local_parent
         }
     else:
-        # Standard dataset folder (like Sentinel .SAFE or .zarr)
         base_name = os.path.basename(clean_item)
         local_path = os.path.join(input_base_dir, base_name)
         return {
@@ -190,7 +294,6 @@ def parse_input_item(item, input_base_dir):
             'local_cleanup_path': local_path
         }
 
-# Load YAML configuration content safely
 with open(yaml_path, 'r') as f:
     data = yaml.safe_load(f)
 
@@ -201,9 +304,6 @@ inputs_map = []
 outputs_map = []
 has_changes = False
 
-# --------------------------------------------------------------------------
-# Process Input SLCS files
-# --------------------------------------------------------------------------
 workflow = data.get('workflow', [])
 if isinstance(workflow, list):
     for step in workflow:
@@ -226,9 +326,6 @@ if isinstance(workflow, list):
                         params['input_slcs_files'] = new_slcs
                         has_changes = True
 
-# --------------------------------------------------------------------------
-# Process Output Products
-# --------------------------------------------------------------------------
 io_config = data.get('io', {})
 if isinstance(io_config, dict):
     outputs = io_config.get('output_products', [])
@@ -244,17 +341,14 @@ if isinstance(io_config, dict):
                     out['path'] = local_path
                     has_changes = True
 
-# Check if all output products already exist on S3
 all_outputs_exist = False
 if outputs_map:
     all_outputs_exist = all(check_s3_exists(out['rclone']) for out in outputs_map)
 
-# ONLY overwrite the YAML file on disk if S3 paths were modified AND outputs don't already exist
 if has_changes and not all_outputs_exist:
     with open(yaml_path, 'w') as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
-# Output JSON metadata string
 print(json.dumps({
     'has_changes': has_changes,
     'all_outputs_exist': all_outputs_exist,
@@ -265,7 +359,6 @@ print(json.dumps({
 EOF
         )
 
-        # Extract parsed metadata booleans
         if [ -n "$PARSE_OUT" ]; then
             HAS_CHANGES=$(echo "$PARSE_OUT" | uv run python -c 'import sys, json; print(json.load(sys.stdin).get("has_changes", False))')
             ALL_OUTPUTS_EXIST=$(echo "$PARSE_OUT" | uv run python -c 'import sys, json; print(json.load(sys.stdin).get("all_outputs_exist", False))')
@@ -281,7 +374,7 @@ EOF
             continue
         fi
 
-        # Download input files/folders from S3 using 'rclone copy -P' and auto-unzip .zip archives
+        # Download input files/folders from S3 using 'rclone copy'
         if [ "$HAS_CHANGES" = "True" ]; then
             echo "$PARSE_OUT" | uv run python -c '
 import sys, json, subprocess, os, zipfile
@@ -293,7 +386,6 @@ for item in data.get("inputs", []):
     print(f"[RCLONE DOWNLOAD] Downloading {rclone_src} -> {rclone_dst}")
     subprocess.run(["rclone", "copy", rclone_src, rclone_dst, "--transfers", "16", "--stats", "15s"], check=True)
 
-    # Search for any .zip files in the downloaded directory and extract them
     search_dir = rclone_dst if os.path.isdir(rclone_dst) else os.path.dirname(rclone_dst)
     if os.path.exists(search_dir):
         for root, _, files in os.walk(search_dir):
@@ -310,18 +402,24 @@ for item in data.get("inputs", []):
                         print(f"[WARNING] Failed to extract {zip_path}: {e}")
 '
         else
-            # Remove redundant backup file if no changes were needed
             rm -f "${YAML_FILE}.bak"
         fi
     fi
 
     # ==========================================================================
-    # 3. RUN PYTHON TEST SCRIPT VIA PYTEST
-    # Redirect both stdout and stderr (2>&1) into logs/<TEST_NAME>/<TEST_BASE>.log
+    # 3. RUN TEST SCRIPT
     # ==========================================================================
-    echo "Launching $PY_FILE via 'uv run pytest' (log output -> $LOG_FILE)..."
-    uv run --extra tests pytest -s -vv -m ard "$PY_FILE" > "$LOG_FILE" 2>&1
-    EXIT_CODE=$?
+    if [ "$TEST_BASE" = "run" ]; then
+        RUN_SCRIPT="$LAUNCH_DIR/run.sh"
+        chmod +x "$RUN_SCRIPT" 2>/dev/null || true
+        echo "Launching $RUN_SCRIPT via 'sudo' (log output -> $LOG_FILE)..."
+        sudo "$RUN_SCRIPT" > "$LOG_FILE" 2>&1
+        EXIT_CODE=$?
+    else
+        echo "Launching $PY_FILE via 'uv run pytest' (log output -> $LOG_FILE)..."
+        uv run --extra tests pytest -s -vv -m ard "$PY_FILE" > "$LOG_FILE" 2>&1
+        EXIT_CODE=$?
+    fi
 
     if [ $EXIT_CODE -eq 0 ]; then
         echo "✓ Test $TEST_BASE completed successfully."
@@ -337,8 +435,6 @@ for item in data.get("inputs", []):
 import sys, json, subprocess, os, shutil
 
 data = json.load(sys.stdin)
-
-# Step 4a: Upload generated output files back to S3 ONLY if the test passed
 exit_code = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 
 for item in data.get("outputs", []):
@@ -357,7 +453,6 @@ for item in data.get("outputs", []):
         else:
             os.remove(local_src)
 
-# Step 4b: Delete downloaded input files/folders from /data/scratch/external/DATA-ROSEL
 for item in data.get("inputs", []):
     cleanup_path = item["local_cleanup_path"]
     if os.path.exists(cleanup_path):
@@ -367,7 +462,6 @@ for item in data.get("inputs", []):
         else:
             os.remove(cleanup_path)
 
-# Step 4c: Clean up all remaining temporary files and folders left by eopf in temporary__folder
 tmp_folder = data.get("tmp_folder")
 forbidden_dirs = ["/", "/tmp", "/var", "/home", "/data/scratch", "/data/scratch/external", "/data"]
 if tmp_folder and os.path.exists(tmp_folder) and os.path.abspath(tmp_folder) not in forbidden_dirs:
@@ -383,7 +477,7 @@ if tmp_folder and os.path.exists(tmp_folder) and os.path.abspath(tmp_folder) not
             print(f"[WARNING] Failed to remove temporary item {entry_path}: {e}")
 ' "$EXIT_CODE"
 
-        # Step 4d: Restore the original untouched YAML configuration file from backup
+        # Restore original YAML file
         if [ -f "${YAML_FILE}.bak" ]; then
             mv "${YAML_FILE}.bak" "$YAML_FILE"
         fi
