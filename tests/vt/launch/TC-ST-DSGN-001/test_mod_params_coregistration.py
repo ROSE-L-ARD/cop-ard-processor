@@ -45,7 +45,7 @@ EXPECTED_VIOLATION_LINE = "  - coherence_threshold_image_matching: value 2.5 is 
 YAML_PATH = Path(__file__).parents[2] / "triggering" / "TC-ST-DSGN-001" / "mod_params_coregistration.yaml"
 
 
-@pytest.mark.need_files
+@pytest.mark.ard
 def test_mod_params_coregistration(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture):
     """Run the broken-parameter payload and assert the Layer-1 preflight rejects the Coregistration step."""
     caplog.set_level(logging.INFO)

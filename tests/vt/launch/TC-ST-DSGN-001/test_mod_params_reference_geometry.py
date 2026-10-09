@@ -44,7 +44,7 @@ EXPECTED_VIOLATION_LINE = "  - enable_dask: value 'no' has an invalid type: expe
 YAML_PATH = Path(__file__).parents[2] / "triggering" / "TC-ST-DSGN-001" / "mod_params_reference_geometry.yaml"
 
 
-@pytest.mark.need_files
+@pytest.mark.ard
 def test_mod_params_reference_geometry(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture):
     """Run the broken-parameter payload and assert the Layer-1 preflight rejects the ReferenceGeometry step."""
     caplog.set_level(logging.INFO)

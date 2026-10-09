@@ -23,7 +23,10 @@ workflow:
     adfs:
       REFDB: REFDB
     parameters:
-      input_slcs_files: [/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE]
+      input_slcs_files:
+        [
+          /data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE,
+        ]
       indices: [0, 1, 27, 28]
   - name: reference_dem
     module: cop_ard_processor.processing_units
@@ -82,7 +85,7 @@ workflow:
 io:
   adfs:
     - id: REFDB
-      path: /data/SENTINEL1/SURAT/WDIR/TC-ST-DSGN-001/geocoding/REFDB
+      path: /data/SENTINEL1/SURAT/WDIR/TC-ST-DSGN-001/REFDB
     - id: DEM
       path: /data/SENTINEL1/SURAT/dem
   output_products:
@@ -91,19 +94,19 @@ io:
       engine: cpm_zarr
       type: file
       writer_params:
-        mode: 'w'
+        mode: "w"
     - id: current_reference
       path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-DSGN-001/geocoding/CURRENT_REFERENCE/current_reference_2023-07-27.zarr
       engine: cpm_zarr
       type: file
       writer_params:
-        mode: 'w'
+        mode: "w"
     - id: stable_references
       path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-DSGN-001/geocoding/STABLE_REFERENCES/stable_reference_2023-07-27.zarr
       engine: cpm_zarr
       type: file
       writer_params:
-        mode: 'w'
+        mode: "w"
 dask_context:
   cluster_type: local
   cluster_config:

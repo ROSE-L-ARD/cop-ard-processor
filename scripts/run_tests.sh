@@ -157,14 +157,15 @@ fi
 
 TEST_LIST=()
 
+# Append 'REFERENCE' first ONLY if enabled by flag AND REFERENCE.py exists
+if [ "$RUN_REFERENCE" = true ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
+    TEST_LIST+=("REFERENCE")
+elif [ "$RUN_REFERENCE" = false ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
+    echo "ℹ REFERENCE.py found but skipped due to --skip-reference flag."
+fi
+
 if [ "$TEST_NAME" = "TC-ST-FUNC-014" ] || [ "$TEST_NAME" = "TC-ST-014" ]; then
     # SPECIAL HANDLING: TC-ST-FUNC-014 runs REFERENCE.py first (if present), then run.sh
-    if [ "$RUN_REFERENCE" = true ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
-        TEST_LIST+=("REFERENCE")
-    elif [ "$RUN_REFERENCE" = false ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
-        echo "ℹ REFERENCE.py found but skipped due to --skip-reference flag."
-    fi
-
     if [ -f "$LAUNCH_DIR/run.sh" ]; then
         TEST_LIST+=("run")
     else
@@ -172,21 +173,33 @@ if [ "$TEST_NAME" = "TC-ST-FUNC-014" ] || [ "$TEST_NAME" = "TC-ST-014" ]; then
         exit 1
     fi
 else
-    # Append 'REFERENCE' first ONLY if enabled by flag AND REFERENCE.py exists
-    if [ "$RUN_REFERENCE" = true ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
-        TEST_LIST+=("REFERENCE")
-    elif [ "$RUN_REFERENCE" = false ] && [ -f "$LAUNCH_DIR/REFERENCE.py" ]; then
-        echo "ℹ REFERENCE.py found but skipped due to --skip-reference flag."
-    fi
+    # Check if TRIGGER_DIR contains mod_*.yaml files or custom YAMLs that don't match launch python files
+    MOD_YAML_COUNT=$(find "$TRIGGER_DIR" -maxdepth 1 -name "mod_*.yaml" 2>/dev/null | wc -l)
 
-    # Find all remaining .py test scripts, sort them alphabetically/chronologically
+    PY_FILES=()
     while IFS= read -r file; do
         [ -z "$file" ] && continue
         base=$(basename "$file" .py)
         if [ "$base" != "REFERENCE" ]; then
-            TEST_LIST+=("$base")
+            PY_FILES+=("$base")
         fi
-    done < <(find "$LAUNCH_DIR" -maxdepth 1 -name "*.py" | sort)
+    done < <(find "$LAUNCH_DIR" -maxdepth 1 -name "*.py" 2>/dev/null | sort)
+
+    if [ "$MOD_YAML_COUNT" -gt 0 ] || { [ ${#PY_FILES[@]} -eq 1 ] && [ ! -f "$TRIGGER_DIR/${PY_FILES[0]}.yaml" ]; }; then
+        # Drive execution queue by YAML files in TRIGGER_DIR
+        while IFS= read -r yfile; do
+            [ -z "$yfile" ] && continue
+            ybase=$(basename "$yfile" .yaml)
+            if [ "$ybase" != "REFERENCE" ]; then
+                TEST_LIST+=("$ybase")
+            fi
+        done < <(find "$TRIGGER_DIR" -maxdepth 1 -name "*.yaml" 2>/dev/null | sort)
+    else
+        # Drive execution queue by .py files in LAUNCH_DIR
+        for pbase in "${PY_FILES[@]}"; do
+            TEST_LIST+=("$pbase")
+        done
+    fi
 fi
 
 # Fail early if no test files were detected in the queue
@@ -210,17 +223,27 @@ echo "=========================================="
 # ==============================================================================
 
 for TEST_BASE in "${TEST_LIST[@]}"; do
-    PY_FILE="$LAUNCH_DIR/${TEST_BASE}.py"
-    
-    # Check trigger directory for either step-specific or test-wide YAML config
+    # --------------------------------------------------------------------------
+    # Determine PY_FILE & YAML_FILE dynamically
+    # --------------------------------------------------------------------------
+    if [ "$TEST_BASE" = "run" ]; then
+        PY_FILE=""
+    elif [ -f "$LAUNCH_DIR/${TEST_BASE}.py" ]; then
+        PY_FILE="$LAUNCH_DIR/${TEST_BASE}.py"
+    elif [ -f "$LAUNCH_DIR/${TEST_NAME}.py" ]; then
+        PY_FILE="$LAUNCH_DIR/${TEST_NAME}.py"
+    else
+        PY_FILE=$(find "$LAUNCH_DIR" -maxdepth 1 -name "*.py" ! -name "REFERENCE.py" 2>/dev/null | sort | head -n 1)
+    fi
+
     if [ -f "$TRIGGER_DIR/${TEST_BASE}.yaml" ]; then
         YAML_FILE="$TRIGGER_DIR/${TEST_BASE}.yaml"
     elif [ -f "$TRIGGER_DIR/${TEST_NAME}.yaml" ]; then
         YAML_FILE="$TRIGGER_DIR/${TEST_NAME}.yaml"
     else
-        YAML_FILE="$TRIGGER_DIR/${TEST_BASE}.yaml"
+        YAML_FILE=$(find "$TRIGGER_DIR" -maxdepth 1 -name "*.yaml" ! -name "REFERENCE.yaml" 2>/dev/null | sort | head -n 1)
     fi
-    
+
     LOG_FILE="$LOG_DIR/${TEST_BASE}.log"
 
     echo ""
@@ -230,7 +253,7 @@ for TEST_BASE in "${TEST_LIST[@]}"; do
     HAS_CHANGES="False"
     ALL_OUTPUTS_EXIST="False"
 
-    if [ -f "$YAML_FILE" ]; then
+    if [ -n "$YAML_FILE" ] && [ -f "$YAML_FILE" ]; then
         # Create a backup copy of the original YAML config file
         cp "$YAML_FILE" "${YAML_FILE}.bak"
 
@@ -430,7 +453,7 @@ for item in data.get("inputs", []):
     # ==========================================================================
     # 4. POST-TEST UPLOAD, TEMP DIR CLEANUP, AND YAML RESTORATION
     # ==========================================================================
-    if [ -f "$YAML_FILE" ] && [ "$HAS_CHANGES" = "True" ]; then
+    if [ -n "$YAML_FILE" ] && [ -f "$YAML_FILE" ] && [ "$HAS_CHANGES" = "True" ]; then
         echo "$PARSE_OUT" | uv run python -c '
 import sys, json, subprocess, os, shutil
 

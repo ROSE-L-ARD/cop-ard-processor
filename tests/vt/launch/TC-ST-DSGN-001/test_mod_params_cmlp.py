@@ -45,7 +45,7 @@ EXPECTED_VIOLATION_LINE = "  - max_past_stable_history: value 2.5 has an invalid
 YAML_PATH = Path(__file__).parents[2] / "triggering" / "TC-ST-DSGN-001" / "mod_params_cmlp.yaml"
 
 
-@pytest.mark.need_files
+@pytest.mark.ard
 def test_mod_params_cmlp(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture):
     """Run the broken-parameter payload and assert the Layer-1 preflight rejects the CMLP step."""
     caplog.set_level(logging.INFO)

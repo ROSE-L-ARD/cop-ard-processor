@@ -45,7 +45,7 @@ EXPECTED_VIOLATION_LINE = "  - stable_interval_days: value '365' has an invalid 
 YAML_PATH = Path(__file__).parents[2] / "triggering" / "TC-ST-DSGN-001" / "mod_params_reference_update.yaml"
 
 
-@pytest.mark.need_files
+@pytest.mark.ard
 def test_mod_params_reference_update(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture):
     """Run the broken-parameter payload and assert the Layer-1 preflight rejects the ReferenceUpdate step."""
     caplog.set_level(logging.INFO)

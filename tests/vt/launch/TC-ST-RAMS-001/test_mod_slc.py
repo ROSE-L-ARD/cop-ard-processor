@@ -53,12 +53,14 @@ FACILITY_ROOT = Path("/data/SENTINEL1/SURAT")
 # PLACEHOLDER — confirm/create on facility (base: /data/SENTINEL1/SURAT)
 # MOD-SLC: real SAFE copy with the required <swathTiming> element removed from
 # the first product annotation XML (see module docstring for the recipe).
-MOD_SLC_PATH = "/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111_MODSLC.SAFE"
+MOD_SLC_PATH = (
+    "/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111_MODSLC.SAFE"
+)
 
 YAML_PATH = Path(__file__).parents[2] / "triggering" / "TC-ST-RAMS-001" / "mod_slc.yaml"
 
 
-@pytest.mark.need_files
+@pytest.mark.ard
 def test_mod_slc(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture):
     """Run the MOD-SLC payload and assert the preflight reports the schema violation."""
     caplog.set_level(logging.INFO)

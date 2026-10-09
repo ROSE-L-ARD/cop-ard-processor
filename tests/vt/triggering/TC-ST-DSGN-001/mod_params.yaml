@@ -26,7 +26,10 @@ workflow:
     parameters:
       # Nominal (real) Sentinel-1 IW SAFE; only its filename is inspected, so
       # the archive itself need not exist for the parameter checks to run.
-      input_slcs_files: [/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE]
+      input_slcs_files:
+        [
+          /data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE,
+        ]
       # MOD value 1: a negative index is not a valid sub-swath/burst selector.
       indices: [-1]
       # MOD value 2: a calibration target outside the allowed set.
@@ -36,7 +39,7 @@ workflow:
 io:
   adfs:
     - id: REFDB
-      path: /data/SENTINEL1/SURAT/WDIR/REFDB
+      path: /data/SENTINEL1/SURAT/WDIR/TC-ST-DSGN-001/REFDB
 dask_context:
   cluster_type: local
   cluster_config:
