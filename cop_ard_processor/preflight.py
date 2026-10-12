@@ -47,6 +47,7 @@ import xarray as xr
 from lxml import etree
 
 from cop_ard_processor.utils import get_instrument_mode
+from cop_ard_app.io import Path as Path_io
 
 CONFIG_PATH = Path(__file__).parent / "conf" / "CONFIG.json"
 
@@ -633,9 +634,9 @@ class EtadStackValidator:
         """Validate one ETAD product directory and append violations found."""
         path = getattr(value, "path", value)
         scope = str(path)
-        product_dir = Path(path)
+        product_dir = Path_io(path)
 
-        if not product_dir.is_dir():
+        if not product_dir.exists():
             violations.append(Violation(scope, f"ETAD product directory does not exist: {path}"))
             return
 
