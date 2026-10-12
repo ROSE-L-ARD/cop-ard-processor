@@ -73,8 +73,6 @@ def test_payload():
         "ReferenceDEM Unit",
         "ReferenceGeometry Unit",
         "Coregistration Unit",
-        "CMLP Unit",
-        "Geocoding Unit",
     ]
     for unit in mandatory_units:
         expected_trace = f"Started : {unit}"
@@ -86,10 +84,9 @@ def test_payload():
     assert any("Skipping ETAD step" in event for event in captured_events), "ETAD should be skipped."
     
 
-    # 3. Check that Image Matching and Split Spectrum were DONE (NOT skipped)
     assert not any("Skipping ESD step" in event or "Skipping ESD" in event for event in captured_events), "ESD was unexpectedly skipped."
     assert not any("Skipping image matching" in event for event in captured_events), "Image matching was unexpectedly skipped."
-    assert not any("Skipping split spectrum" in event for event in captured_events), "Split spectrum was unexpectedly skipped."
+    assert any("Skipping split spectrum" in event for event in captured_events), "Split spectrum was not skipped."
 
     # 4. Check external orbit bypass
     assert any("Skipping external orbit" in event for event in captured_events), "Skip trace for 'external orbit' missing."

@@ -414,7 +414,7 @@
       "enable_image_matching": true,
       "enable_split_spectrum": true,
       "coherence_threshold_image_matching": 0.3,
-      "image_matching_degree": 2,
+      "image_matching_degree": 0,
       "matching_kernel_shape": [15, 15],
       "wsize": [256, 256],
       "wstep": [256, 256],
@@ -427,7 +427,7 @@
         "azimuth_time": 16,
         "slant_range_time": 64
       },
-      "esd_poly_degree": 2,
+      "esd_poly_degree": 0,
       "split_spectrum_poly_degree": 2,
       "height_ionosphere": null,
       "coherence_threshold_split_spectrum": 0.3

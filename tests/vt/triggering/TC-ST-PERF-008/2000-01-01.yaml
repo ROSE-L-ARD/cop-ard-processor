@@ -40,9 +40,10 @@ workflow:
       simulation_ml: reference_geometry.simulation_ml
     adfs:
       REFDB: REFDB
+      IONO: IONO
     parameters:
       enable_image_matching: true
-      enable_split_spectrum: true
+      enable_split_spectrum: false
       enable_esd: true
     outputs:
       cslcs: cslcs
@@ -52,6 +53,8 @@ io:
       path: /data/ROSEL/GPP_007/WDIR/TC-ST-PERF-008/REFDB
     - id: DEM
       path: /data/ROSEL/GPP_007/dem
+    - id: IONO
+      path: /data/SW-ALL.csv
   output_products:
     - id: cslcs
       path: /data/ROSEL/GPP_007/EOPF/OUTPUT/TC-ST-PERF-008/CSLC/cslcs_2000-01-01.zarr
