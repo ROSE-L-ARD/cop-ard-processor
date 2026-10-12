@@ -1,0 +1,90 @@
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__use_basic_logging: true
+  triggering__validate_run: false
+  temporary__folder: /data/SENTINEL1/NAPLES/TMP/TC-ST-FUNC-001
+  triggering__temporary_shared: true
+  breakpoints__activate_all: false
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+    parameters:
+      input_slcs_files: [/data/SENTINEL1/NAPLES/SAFE/S1A_IW_SLC__1SDV_20200608T050341_20200608T050409_032921_03D03C_43EC.SAFE]
+      indices: [26, 27, 54, 55]
+  - name: reference_dem
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceDEM
+    inputs:
+      slcs: ingestion.slcs
+    adfs:
+      DEM: DEM
+      REFDB: REFDB
+  - name: reference_geometry
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceGeometry
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+    adfs:
+      REFDB: REFDB
+  - name: coregistration
+    module: cop_ard_processor.processing_units
+    processing_unit: Coregistration
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    parameters:
+      initialize_current_reference: true
+    outputs:
+      cslcs: cslcs
+  - name: reference_update
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceUpdate
+    inputs:
+      slcs: coregistration.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+    outputs:
+      current_reference: current_reference
+      stable_references: stable_references
+io:
+  adfs:
+    - id: REFDB
+      path: /data/SENTINEL1/NAPLES/WDIR/TC-ST-FUNC-001/REFDB
+    - id: DEM
+      path: /data/SENTINEL1/NAPLES/dem_10m
+  output_products:
+    - id: cslcs
+      path: /data/SENTINEL1/NAPLES/EOPF/OUTPUT/TC-ST-FUNC-001/CSLC/cslcs_2020-06-08.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: current_reference
+      path: /data/SENTINEL1/NAPLES/EOPF/OUTPUT/TC-ST-FUNC-001/CURRENT_REFERENCE/current_reference_2020-06-08.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+    - id: stable_references
+      path: /data/SENTINEL1/NAPLES/EOPF/OUTPUT/TC-ST-FUNC-001/STABLE_REFERENCES/stable_reference_2020-06-08.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: 'w'
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 16
+    threads_per_worker: 1
+    memory_limit: 0

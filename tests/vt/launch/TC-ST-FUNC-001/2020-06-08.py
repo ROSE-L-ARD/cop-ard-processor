@@ -26,7 +26,7 @@ from cop_ard_processor.structure import check_ARD_outputs
 from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
-yaml_path = f"{RP_BASE_PATH}/triggering/TC-ST-FUNC-001/2023-07-27.yaml"
+yaml_path = f"{RP_BASE_PATH}/triggering/TC-ST-FUNC-001/2020-06-08.yaml"
 
 
 @pytest.mark.ard

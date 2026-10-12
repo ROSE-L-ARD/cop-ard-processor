@@ -2,7 +2,7 @@ general_configuration:
   triggering__load_default_logging: false
   triggering__use_basic_logging: true
   triggering__validate_run: false
-  temporary__folder: /data/SENTINEL1/SURAT/TMP
+  temporary__folder: /data/SENTINEL1/NAPLES/TMP
   triggering__temporary_shared: true
   breakpoints__activate_all: false
 workflow:
@@ -12,9 +12,9 @@ workflow:
     adfs:
       REFDB: REFDB
     parameters:
-      input_slcs_files: [/data/SENTINEL1/SURAT/SAFE/S1A_IW_SLC__1SDV_20230727T084125_20230727T084152_049606_05F712_E111.SAFE]
+      input_slcs_files: [/data/SENTINEL1/NAPLES/SAFE/S1A_IW_SLC__1SDV_20200608T050341_20200608T050409_032921_03D03C_43EC.SAFE]
       recompute: true
-      indices: [0, 1, 27, 28]
+      indices: [26, 27, 54, 55]
   - name: reference_dem
     module: cop_ard_processor.processing_units
     processing_unit: ReferenceDEM
@@ -38,9 +38,9 @@ workflow:
 io:
   adfs:
     - id: REFDB
-      path: /data/SENTINEL1/SURAT/WDIR/TC-ST-FUNC-001/REFDB
+      path: /data/SENTINEL1/NAPLES/WDIR/TC-ST-FUNC-001/REFDB
     - id: DEM
-      path: /data/SENTINEL1/SURAT/dem
+      path: /data/SENTINEL1/NAPLES/dem_10m
   output_products:
     - id: /not_used
       path: /not_used.zarr

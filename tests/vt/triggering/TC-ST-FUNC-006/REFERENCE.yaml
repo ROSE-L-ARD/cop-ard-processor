@@ -49,6 +49,6 @@ io:
 dask_context:
   cluster_type: local
   cluster_config:
-    n_workers: 16
+    n_workers: 8
     threads_per_worker: 1
     memory_limit: 0
