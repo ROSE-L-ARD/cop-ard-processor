@@ -5,61 +5,63 @@ general_configuration:
   triggering__temporary_shared: true
   breakpoints__activate_all: false
 workflow:
-  - name: ingestion
-    module: cop_ard_processor.processing_units
-    processing_unit: Ingestion
-    adfs:
-      REFDB: REFDB
-    parameters:
-      input_slcs_files:
-        [
-          "s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S3/UNZIP/EOL1ASARSAO1A9188982/S1A_OPER_SAR_EOSSP__CORE_L1A_OLF_20240326T174604.xemt",
-        ]
-  - name: reference_dem
-    module: cop_ard_processor.processing_units
-    processing_unit: ReferenceDEM
-    inputs:
-      slcs: ingestion.slcs
-    adfs:
-      DEM: DEM
-      REFDB: REFDB
-  - name: reference_geometry
-    module: cop_ard_processor.processing_units
-    processing_unit: ReferenceGeometry
-    inputs:
-      slcs: ingestion.slcs
-      dem: reference_dem.dem
-    adfs:
-      REFDB: REFDB
-  - name: coregistration
-    module: cop_ard_processor.processing_units
-    processing_unit: Coregistration
-    inputs:
-      slcs: ingestion.slcs
-      dem: reference_dem.dem
-      simulation_ref: reference_geometry.simulation_ref
-      simulation_ml: reference_geometry.simulation_ml
-    adfs:
-      REFDB: REFDB
-    parameters:
-      enable_image_matching: true
-      enable_split_spectrum: true
-      enable_esd: false
-    outputs:
-      cslcs: cslcs
+- name: ingestion
+  module: cop_ard_processor.processing_units
+  processing_unit: Ingestion
+  adfs:
+    REFDB: REFDB
+  parameters:
+    reference_id: EOSAO1A_2024-03-08T17:09:18.480305
+    input_slcs_files:
+    - /scratch/external/DATA-ROSEL/EOL1ASARSAO1A9188982/S1A_OPER_SAR_EOSSP__CORE_L1A_OLF_20240326T174604.xemt
+- name: reference_dem
+  module: cop_ard_processor.processing_units
+  processing_unit: ReferenceDEM
+  inputs:
+    slcs: ingestion.slcs
+  adfs:
+    DEM: DEM
+    REFDB: REFDB
+- name: reference_geometry
+  module: cop_ard_processor.processing_units
+  processing_unit: ReferenceGeometry
+  inputs:
+    slcs: ingestion.slcs
+    dem: reference_dem.dem
+  adfs:
+    REFDB: REFDB
+- name: coregistration
+  module: cop_ard_processor.processing_units
+  processing_unit: Coregistration
+  inputs:
+    slcs: ingestion.slcs
+    dem: reference_dem.dem
+    simulation_ref: reference_geometry.simulation_ref
+    simulation_ml: reference_geometry.simulation_ml
+  adfs:
+    REFDB: REFDB
+    IONO: IONO
+  parameters:
+    enable_image_matching: true
+    enable_split_spectrum: true
+    enable_esd: false
+  outputs:
+    cslcs: cslcs
 io:
   adfs:
-    - id: REFDB
-      path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S3/2024-03-08/REF_DB
-    - id: DEM
-      path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S3/2024-03-08/dem
+  - id: REFDB
+    path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S3/2024-03-08-SRTM/REF_DB
+  - id: DEM
+    path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S3/dem_srtm
+  - id: IONO
+    path: s3://bopen-sar/ARD-ROSE-L/SW-All.csv
   output_products:
-    - id: cslcs
-      path: s3://bopen-sar/ARD-ROSE-L/SAOCOM/Naples/DSC/S3/2024-03-08/OUTPUT/CSLC/cslcs_2024-03-24.zarr
-      engine: cpm_zarr
-      type: file
-      writer_params:
-        mode: "w"
+  - id: cslcs
+    path: /scratch/external/TMP/cslcs_2024-03-24_v2.zarr
+    engine: cpm_zarr
+    type: file
+    writer_params:
+      mode: w
 dask_context:
   cluster_type: local
   cluster_config:

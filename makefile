@@ -54,6 +54,7 @@ cslc-qualification-notebook:
 	
 docs:
 	@echo "Rendering Quarto reports..."
+	quarto render notebooks/comparison_with_third_party_software.ipynb
 	quarto render notebooks/cslc_qualification.ipynb
 	quarto render notebooks/cslc_qualification_esd.ipynb
 	quarto render notebooks/geolocation_qualification.ipynb
