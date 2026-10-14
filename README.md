@@ -35,8 +35,7 @@ The repository separates the processing package, its operational tooling, and th
 * `scripts/`: Operational helpers.
   * `run_tests.sh`: VT orchestrator (see Test Execution Guidelines).
   * `run_payload.py`: Runs a single EOPF trigger payload through the workflow runner.
-* `internal_scripts/`: Ad-hoc data preparation helpers (`get_dem.py`, `download_data.py`, `generate_triggers.py`, `build_config.py`, `check_files.sh`).
-* `notebooks/`: CSLC, ESD and geolocation qualification notebooks (Quarto).
+* `notebooks/`: CSLC, CSLC-ESD, geolocation, RIWS qualification and a third-party software comparison.
 * `docs/`: Rendered qualification reports produced by `make docs`.
 * `makefile`: Installation and quality-gate targets (see Development).
 * `Dockerfile`, `docker-compose.yml`: Container build and Dask cluster deployment (see Deployment).
@@ -143,15 +142,15 @@ Quality gates are driven by the `makefile`. The gate targets (`format`, `lint`, 
 | `make complexity` | `xenon` report over `cop_ard_processor/` (`--max-average b --max-modules c --max-absolute d`) |
 | `make typecheck` | `mypy` over `cop_ard_processor/` (`--allow-redefinition`) |
 | `make check` | `lint` + `security` + `complexity` + `typecheck` |
-| `make docs` | `quarto render` of the three qualification notebooks into `docs/` |
+| `make docs` | `quarto render` of the four rendered qualification notebooks (comparison, CSLC, CSLC-ESD, geolocation) into `docs/` |
 | `make cslc-qualification-notebook` | Builds the separate Python 3.12 `.venv-qual` environment from `notebooks/cslc_qualification.txt` |
 
 ## Deployment
 
-`Dockerfile` is a two-stage build: a `uv` builder stage syncs the pinned environment with `--extra cluster-plugin` (private GitHub dependencies are fetched through a BuildKit `ssh` mount) and downloads the PROJ geoid grid into the image's `pyproj` data directory; a `python:3.13-slim` runtime stage copies the built tree with `.venv` prepended to `PATH`.
+`Dockerfile` is a two-stage build: a `uv` builder stage syncs the pinned environment with `--extra cluster-plugin` (private GitHub dependencies are fetched over HTTPS using a BuildKit `secret` mount of `.netrc`) and downloads the PROJ geoid grid into the image's `pyproj` data directory; a `python:3.13-slim` runtime stage installs the C libraries required by the EOPF readers, copies the built tree with `.venv` prepended to `PATH`, and drops privileges to a non-root `appuser` (uid/gid `10001`).
 
 ```bash
-docker build --ssh default -t localhost/cop-ard-processor:latest .
+docker build --secret id=netrc,src="$HOME/.netrc" -t localhost/cop-ard-processor:latest .
 ```
 
-`docker-compose.yml` runs the processing cluster on that image: a `dask scheduler` service (dashboard bound to `127.0.0.1:8787`) plus `worker-1` / `worker-2` (`--nworkers 4 --nthreads 1 --memory-limit 8GB`, `32G` memory and `4` CPU limits, `shm_size: 2gb` for GDAL/PyArrow workloads), all mounting the Sentinel-1 input volume.
+`docker-compose.yml` runs the processing cluster on that image: a `dask scheduler` service (scheduler port `8786` and dashboard `8787` bound to `127.0.0.1`, TCP healthcheck) plus `worker-1` / `worker-2` (`dask worker tcp://scheduler:8786 --nworkers 4 --nthreads 1 --memory-limit 8GB`, `32G` memory and `4` CPU limits, `shm_size: 2gb` for GDAL/PyArrow workloads), all running as `user: root` and mounting the Sentinel-1 input volume (`/data/SENTINEL1/SURAT`).
