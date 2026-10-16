@@ -12,6 +12,7 @@ workflow:
       REFDB: REFDB
     parameters:
       input_slcs_files: [/data/ROSEL/GPP_007/iSLC/primary/iSLC]
+      indices: [0,1,12,13]
       recompute: true
   - name: reference_dem
     module: cop_ard_processor.processing_units

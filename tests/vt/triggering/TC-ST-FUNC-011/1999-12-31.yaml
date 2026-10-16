@@ -13,6 +13,7 @@ workflow:
       ETAD: ETAD
     parameters:
       input_slcs_files: [/data/ROSEL/GPP_007/iSLC/primary/iSLC]
+      indices: [0,1,12,13]
   - name: reference_dem
     module: cop_ard_processor.processing_units
     processing_unit: ReferenceDEM

@@ -84,8 +84,8 @@ def test_payload():
     assert any("Skipping ETAD step" in event for event in captured_events), "ETAD should be skipped."
     
 
-    assert not any("Skipping ESD step" in event or "Skipping ESD" in event for event in captured_events), "ESD was unexpectedly skipped."
-    assert not any("Skipping image matching" in event for event in captured_events), "Image matching was unexpectedly skipped."
+    assert  any("Skipping image matching" in event for event in captured_events), "Image matching was not skipped."
+    assert  any("Skipping ESD step" in event or "Skipping ESD" in event for event in captured_events), "ESD was not skipped."
     assert any("Skipping split spectrum" in event for event in captured_events), "Split spectrum was not skipped."
 
     # 4. Check external orbit bypass

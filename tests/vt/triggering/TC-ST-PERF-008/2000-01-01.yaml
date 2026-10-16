@@ -13,7 +13,6 @@ workflow:
       ETAD: ETAD
     parameters:
       input_slcs_files: [/data/ROSEL/GPP_007/iSLC/secondary/iSLC]
-      indices: [0,1,2,3]
   - name: reference_dem
     module: cop_ard_processor.processing_units
     processing_unit: ReferenceDEM
@@ -42,9 +41,9 @@ workflow:
       REFDB: REFDB
       IONO: IONO
     parameters:
-      enable_image_matching: true
+      enable_image_matching: false
       enable_split_spectrum: false
-      enable_esd: true
+      enable_esd: false
     outputs:
       cslcs: cslcs
 io:

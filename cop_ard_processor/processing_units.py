@@ -708,6 +708,9 @@ class Coregistration(EOProcessingUnit):
         coherence_threshold_split_spectrum = kwargs.get(
             "coherence_threshold_split_spectrum", config["Coregistration"]["coherence_threshold_split_spectrum"]
         )
+        coherence_threshold_esd = kwargs.get(
+            "coherence_threshold_esd", config["Coregistration"]["coherence_threshold_esd"]
+        )
         matching_kernel_shape = kwargs.get("matching_kernel_shape", config["Coregistration"]["matching_kernel_shape"])
         wsize = kwargs.get("wsize", config["Coregistration"]["wsize"])
         wstep = kwargs.get("wstep", config["Coregistration"]["wstep"])
@@ -718,6 +721,9 @@ class Coregistration(EOProcessingUnit):
         frequency_offset = kwargs.get("frequency_offset", config["Coregistration"]["frequency_offset"])
         multilook_split_spectrum = kwargs.get(
             "multilook_split_spectrum", config["Coregistration"]["multilook_split_spectrum"]
+        )
+        multilook_esd = kwargs.get(
+            "multilook_esd", config["Coregistration"]["multilook_esd"]
         )
         esd_poly_degree = kwargs.get("esd_poly_degree", config["Coregistration"]["esd_poly_degree"])
         split_spectrum_poly_degree = kwargs.get(
@@ -761,6 +767,7 @@ class Coregistration(EOProcessingUnit):
             "image_matching_degree": image_matching_degree,
             "coherence_threshold_image_matching": coherence_threshold_image_matching,
             "coherence_threshold_split_spectrum": coherence_threshold_split_spectrum,
+            "coherence_threshold_esd": coherence_threshold_esd,
             "matching_kernel_shape": _json_safe(matching_kernel_shape),
             "wsize": _json_safe(wsize),
             "wstep": _json_safe(wstep),
@@ -770,6 +777,7 @@ class Coregistration(EOProcessingUnit):
             "bandwidth": bandwidth,
             "frequency_offset": frequency_offset,
             "multilook_split_spectrum": _json_safe(multilook_split_spectrum),
+            "multilook_esd": _json_safe(multilook_esd),
             "esd_poly_degree": esd_poly_degree,
             "split_spectrum_poly_degree": split_spectrum_poly_degree,
             "height_ionosphere": h_iono,
@@ -956,6 +964,8 @@ class Coregistration(EOProcessingUnit):
                 enable_dask=enable_dask,
                 multiburst=multiburst,
                 reference_id=reference_id,
+                multilook = multilook_esd,
+                coherence_threshold = coherence_threshold_esd,
             )
         else:
             logger.info("Skipping ESD step (disabled in configuration).")

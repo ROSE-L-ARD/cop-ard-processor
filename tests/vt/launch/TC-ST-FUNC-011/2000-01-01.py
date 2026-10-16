@@ -84,21 +84,12 @@ def test_payload():
         )
 
     # 6. Optional Steps Bypass Verification
-    bypassed_steps = [
-        "external orbit",
-        "image matching",
-        "split spectrum",
-    ]
-    for step in bypassed_steps:
-        expected_skip_log = f"Skipping {step} step"
-        assert any(expected_skip_log in event for event in captured_events), (
-            f"Pass Criteria Failed: Mandatory skip trace '{expected_skip_log}' was not found in execution logs.\n"
-            f"Captured events:\n{captured_logs_text}"
-        )
-    # Verify Enhanced Spectral Diversity (ESD) Execution
-    assert any("Executing ESD step..." in event for event in captured_events), (
-        f"Pass Criteria Failed: The ESD algorithm execution log was not found.\nCaptured events:\n{captured_logs_text}"
-    )
-    assert not any("Skipping ESD step" in event for event in captured_events), (
-        "Pass Criteria Failed: The ESD step was skipped instead of being executed."
-    )
+    assert any("Skipping ETAD step" in event for event in captured_events), "ETAD should be skipped."
+    
+
+    assert not any("Skipping image matching" in event for event in captured_events), "Image matching was unexpectedly skipped."
+    assert  not any("Skipping ESD step" in event or "Skipping ESD" in event for event in captured_events), "ESD was skipped."
+    assert not any("Skipping split spectrum" in event for event in captured_events), "Split spectrum was skipped."
+
+    # 4. Check external orbit bypass
+    assert any("Skipping external orbit" in event for event in captured_events), "Skip trace for 'external orbit' missing."
