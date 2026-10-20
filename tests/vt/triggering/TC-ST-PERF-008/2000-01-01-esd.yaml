@@ -1,0 +1,69 @@
+general_configuration:
+  triggering__load_default_logging: false
+  triggering__use_basic_logging: true
+  temporary__folder: /data/ROSEL/GPP_007/TMP/TC-ST-PERF-008
+  triggering__temporary_shared: true
+  logging__custom_config: ./logger.yaml
+workflow:
+  - name: ingestion
+    module: cop_ard_processor.processing_units
+    processing_unit: Ingestion
+    adfs:
+      REFDB: REFDB
+      ETAD: ETAD
+    parameters:
+      input_slcs_files: [/data/ROSEL/GPP_007/iSLC/secondary/iSLC]
+  - name: reference_dem
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceDEM
+    inputs:
+      slcs: ingestion.slcs
+    adfs:
+      DEM: DEM
+      REFDB: REFDB
+  - name: reference_geometry
+    module: cop_ard_processor.processing_units
+    processing_unit: ReferenceGeometry
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+    adfs:
+      REFDB: REFDB
+  - name: coregistration
+    module: cop_ard_processor.processing_units
+    processing_unit: Coregistration
+    inputs:
+      slcs: ingestion.slcs
+      dem: reference_dem.dem
+      simulation_ref: reference_geometry.simulation_ref
+      simulation_ml: reference_geometry.simulation_ml
+    adfs:
+      REFDB: REFDB
+      IONO: IONO
+    parameters:
+      enable_image_matching: false
+      enable_split_spectrum: false
+      enable_esd: true
+    outputs:
+      cslcs: cslcs
+io:
+  adfs:
+    - id: REFDB
+      path: /data/ROSEL/GPP_007/WDIR/TC-ST-PERF-008/REFDB
+    - id: DEM
+      path: /data/ROSEL/GPP_007/dem
+    - id: IONO
+      path: /data/SW-ALL.csv
+  output_products:
+    - id: cslcs
+      path: /data/ROSEL/GPP_007/EOPF/OUTPUT/TC-ST-PERF-008/CSLC/cslcs_2000-01-01-esd.zarr
+      engine: cpm_zarr
+      type: file
+      writer_params:
+        mode: "w"
+dask_context:
+  cluster_type: local
+  cluster_config:
+    n_workers: 16
+    threads_per_worker: 1
+    memory_limit: 0
