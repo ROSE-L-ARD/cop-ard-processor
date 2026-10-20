@@ -294,6 +294,7 @@ attributes:
           image_matching_degree: {}
           coherence_threshold_image_matching: {}
           coherence_threshold_split_spectrum: {}
+          coherence_threshold_esd: {}
           matching_kernel_shape: {}
           wsize: {}
           wstep: {}
@@ -303,6 +304,7 @@ attributes:
           bandwidth: {}
           frequency_offset: {}
           multilook_split_spectrum: {}
+          multilook_esd: {}
           esd_poly_degree: {}
           split_spectrum_poly_degree: {}
           height_ionosphere: {}
