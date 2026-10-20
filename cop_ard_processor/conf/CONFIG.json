@@ -442,14 +442,14 @@
         "azimuth_time": 16,
         "slant_range_time": 64
       },
-      "esd_poly_degree": 0,
+      "esd_poly_degree": 1,
       "split_spectrum_poly_degree": 2,
       "height_ionosphere": null,
       "coherence_threshold_split_spectrum": 0.3,
-      "coherence_threshold_esd": 0.7,
+      "coherence_threshold_esd": 0.9,
       "multilook_esd": {
-        "azimuth_time": 8,
-        "slant_range_time": 16
+        "azimuth_time": 16,
+        "slant_range_time": 8
       }
     },
     "ReferenceUpdate": {
