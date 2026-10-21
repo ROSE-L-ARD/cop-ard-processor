@@ -23,6 +23,7 @@ book:
     - cslc_qualification_esd.ipynb
     - geolocation_qualification.ipynb
     - comparison_with_third_party_software.ipynb
+    - RIWS_qualification.ipynb
 
 format:
   typst:
