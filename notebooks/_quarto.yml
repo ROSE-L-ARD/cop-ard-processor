@@ -149,6 +149,8 @@ acronyms:
     long: "Synthetic Aperture Radar"
   - short: "ScanSAR"
     long: "Scanning Synthetic Aperture Radar"
+  - short: "SRTM-1"
+    long: "Shuttle Radar Topography Mission (1 arc-second / 30 m)"
   - short: "SDD"
     long: "Software Design Document"
   - short: "SLC"
