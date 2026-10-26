@@ -156,9 +156,6 @@ def test_payload():
         f"Captured logs:\n{captured_logs_text}"
     )
 
-    print("&%" * 50)
-    print(captured_logs_text)
-
     # 6. Optional Steps Bypass Verification
     bypassed_steps = [
         "external orbit",

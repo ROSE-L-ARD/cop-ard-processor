@@ -2,7 +2,7 @@
 $if(title)$
   title: "$title$",
 $else$
-  title: "Software Qualification Report",
+  title: "Preliminary Product Validation Report",
 $endif$
 $if(project-name)$
   project-name: "$project-name$",
@@ -49,5 +49,26 @@ $if(issuedate)$
 $endif$
 $if(status)$
   status: "$status$",
+$endif$
+$if(approvals)$
+  approvals: (
+    $for(approvals)$
+    ("$it.name$", "$it.date$"),
+    $endfor$
+  ),
+$endif$
+$if(changelog)$
+  changelog: (
+    $for(changelog)$
+    ("$it.reason$", "$it.issue$", "$it.revision$", "$it.date$"),
+    $endfor$
+  ),
+$endif$
+$if(changerecord)$
+  changerecord: (
+    $for(changerecord)$
+    ("$it.reason$", "$it.date$", "$it.pages$", "$it.paragraphs$"),
+    $endfor$
+  ),
 $endif$
 )

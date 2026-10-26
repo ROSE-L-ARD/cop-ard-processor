@@ -2,10 +2,24 @@ project:
   type: book
   output-dir: ../docs
 
-sqr-title: "Software Qualification Report"
+sqr-title: "Preliminary Product Validation Report"
+approvals:
+  - name: "Federico Minati" 
+    date: "2026-10-26"
 
+changelog:
+  - reason: "First issue"
+    issue: "1"
+    revision: "0"
+    date: "2026-10-26"
+
+changerecord:
+  - reason: "Initial document creation"
+    date: "2026-10-26"
+    pages: "All"
+    paragraphs: "All"
 book:
-  title: "Software Qualification Report"
+  title: "Preliminary Product Validation Report"
   author:
     - name: Federico Minati
       affiliation: B-Open Solutions srl
@@ -24,6 +38,9 @@ book:
     - geolocation_qualification.ipynb
     - comparison_with_third_party_software.ipynb
     - RIWS_qualification.ipynb
+    - gmlp_validation_SAOCOM_Murcia.ipynb
+    - gmlp_validation_SAOCOM_Naples.ipynb
+    - gmlp_validation_S1_Naples.ipynb
 
 format:
   typst:
