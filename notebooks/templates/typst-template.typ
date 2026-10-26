@@ -60,6 +60,9 @@
   approvals: (),
   changelog: (),
   changerecord: (),
+  acronyms: (),
+  applicabledocuments: (),
+  referencedocuments: (),
   body,
 ) = {
   // Page geometry and margins matching deltaphi-report.cls
@@ -239,8 +242,9 @@
         right: none,
       ),
       table.header([*Reason for change*], [*Issue Nr.*], [*Revision Number*], [*Date*]),
+      // Removed str() wrappers to support content elements
       ..for entry in changelog {
-        (entry.at(0), str(entry.at(1)), str(entry.at(2)), entry.at(3))
+        (entry.at(0), entry.at(1), entry.at(2), entry.at(3))
       },
     )
   }
@@ -285,6 +289,79 @@
 
   pagebreak()
 
+  // ---------------------------------------------------------
+  // REFERENCE DOCUMENTS & ACRONYMS
+  // ---------------------------------------------------------
+
+  // Reference Documents Table
+  // ---------------------------------------------------------
+  // APPLICABLE DOCUMENTS
+  // ---------------------------------------------------------
+  if applicabledocuments.len() > 0 {
+    text(fill: colors.deepspace-2, size: 22pt, weight: "bold")[APPLICABLE DOCUMENTS]
+    v(0.3cm)
+    set text(fill: colors.deepspace-log, size: 9pt)
+    table(
+      columns: (2.0cm, 1.3fr, 1.4fr, 2.4cm),
+      stroke: (x, y) => (
+        top: 0.5pt + colors.deepspace-log,
+        bottom: 0.5pt + colors.deepspace-log,
+        left: if x > 0 { 0.5pt + colors.deepspace-log } else { none },
+        right: none,
+      ),
+      table.header([*Ref.*], [*Document Title*], [*Document Reference*], [*Issue / Date*]),
+      ..for entry in applicabledocuments {
+        (entry.at(0), entry.at(1), entry.at(2), entry.at(3))
+      },
+    )
+    v(1.2cm)
+  }
+
+  // ---------------------------------------------------------
+  // REFERENCE DOCUMENTS
+  // ---------------------------------------------------------
+  if referencedocuments.len() > 0 {
+    text(fill: colors.deepspace-2, size: 22pt, weight: "bold")[REFERENCE DOCUMENTS]
+    v(0.3cm)
+    set text(fill: colors.deepspace-log, size: 9pt)
+    table(
+      columns: (2.0cm, 1.3fr, 1.4fr, 2.4cm),
+      stroke: (x, y) => (
+        top: 0.5pt + colors.deepspace-log,
+        bottom: 0.5pt + colors.deepspace-log,
+        left: if x > 0 { 0.5pt + colors.deepspace-log } else { none },
+        right: none,
+      ),
+      table.header([*Ref.*], [*Document Title*], [*Document Reference*], [*Issue / Date*]),
+      ..for entry in referencedocuments {
+        (entry.at(0), entry.at(1), entry.at(2), entry.at(3))
+      },
+    )
+    v(1.2cm)
+  }
+
+  if acronyms.len() > 0 {
+    text(fill: colors.deepspace-2, size: 22pt, weight: "bold")[ACRONYMS & ABBREVIATIONS]
+    v(0.3cm)
+    set text(fill: colors.deepspace-log, size: 9pt)
+    table(
+      columns: (3.2cm, 1fr),
+      stroke: (x, y) => (
+        top: 0.5pt + colors.deepspace-log,
+        bottom: 0.5pt + colors.deepspace-log,
+        left: if x > 0 { 0.5pt + colors.deepspace-log } else { none },
+        right: none,
+      ),
+      table.header([*Acronym*], [*Definition*]),
+      ..for entry in acronyms {
+        (entry.at(0), entry.at(1))
+      },
+    )
+  }
+
+  if referencedocuments.len() > 0 or acronyms.len() > 0 {
+    pagebreak()
+  }
+
   body
 }
-

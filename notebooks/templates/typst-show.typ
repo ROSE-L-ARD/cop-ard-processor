@@ -53,21 +53,44 @@ $endif$
 $if(approvals)$
   approvals: (
     $for(approvals)$
-    ("$it.name$", "$it.date$"),
+    ([$it.name$], [$it.date$]),
     $endfor$
   ),
 $endif$
 $if(changelog)$
   changelog: (
     $for(changelog)$
-    ("$it.reason$", "$it.issue$", "$it.revision$", "$it.date$"),
+    ([$it.reason$], [$it.issue$], [$it.revision$], [$it.date$]),
     $endfor$
   ),
 $endif$
 $if(changerecord)$
   changerecord: (
     $for(changerecord)$
-    ("$it.reason$", "$it.date$", "$it.pages$", "$it.paragraphs$"),
+    ([$it.reason$], [$it.date$], [$it.pages$], [$it.paragraphs$]),
+    $endfor$
+  ),
+$endif$
+$if(applicabledocuments)$
+  applicabledocuments: (
+    $for(applicabledocuments)$
+    ([$it.id$], [$it.title$], [$it.ref$], [$it.date$]),
+    $endfor$
+  ),
+$endif$
+  // Pass reference documents list as content blocks
+$if(referencedocuments)$
+  referencedocuments: (
+    $for(referencedocuments)$
+    ([$it.id$], [$it.title$], [$it.ref$], [$it.date$]),
+    $endfor$
+  ),
+$endif$
+  // Pass acronyms list as content blocks
+$if(acronyms)$
+  acronyms: (
+    $for(acronyms)$
+    ([$it.short$], [$it.long$]),
     $endfor$
   ),
 $endif$
