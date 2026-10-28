@@ -36,7 +36,7 @@ The repository separates the processing package, its operational tooling, and th
   * `run_tests.sh`: VT orchestrator (see Test Execution Guidelines).
   * `run_payload.py`: Runs a single EOPF trigger payload through the workflow runner.
 * `notebooks/`: CSLC, CSLC-ESD, geolocation, RIWS qualification and a third-party software comparison.
-* `docs/`: Rendered qualification reports produced by `make docs`.
+* `docs/`: Rendered validation-report site produced by `make html`.
 * `makefile`: Installation and quality-gate targets (see Development).
 * `Dockerfile`, `docker-compose.yml`: Container build and Dask cluster deployment (see Deployment).
 
@@ -169,7 +169,7 @@ uv sync --extra tests
 
 ## Development
 
-Quality gates are driven by the `makefile`. The gate targets (`format`, `lint`, `security`, `complexity`, `typecheck`) run through `uv run --frozen` with the matching optional-dependency extra, so `make install` must have run first; `docs` requires a standalone Quarto install.
+Quality gates are driven by the `makefile`. The gate targets (`format`, `lint`, `security`, `complexity`, `typecheck`) run through `uv run --frozen` with the matching optional-dependency extra, so `make install` must have run first; `html` and `pdf` require a standalone Quarto install.
 
 | Target | Action |
 | --- | --- |
@@ -180,8 +180,9 @@ Quality gates are driven by the `makefile`. The gate targets (`format`, `lint`, 
 | `make complexity` | `xenon` report over `cop_ard_processor/` (`--max-average b --max-modules c --max-absolute d`) |
 | `make typecheck` | `mypy` over `cop_ard_processor/` (`--allow-redefinition`) |
 | `make check` | `lint` + `security` + `complexity` + `typecheck` |
-| `make docs` | `quarto render` of the four rendered qualification notebooks (comparison, CSLC, CSLC-ESD, geolocation) into `docs/` |
-| `make cslc-qualification-notebook` | Builds the separate Python 3.12 `.venv-qual` environment from `notebooks/cslc_qualification.txt` |
+| `make html` | `quarto render` of the full validation-report book (index, CSLC, CSLC-ESD, geolocation, third-party comparison, RIWS, and the three GMLP validations) into `docs/` |
+| `make pdf` | Same book compiled via `quarto render --to typst`, bracketed by the `prep`/`restore` targets |
+| `make cslc-qualification-notebook` | Builds the separate Python 3.12 `.venv-qual` environment from `notebooks/scripts/cslc_qualification.txt` |
 
 ## Deployment
 
