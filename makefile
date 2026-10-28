@@ -8,7 +8,7 @@ GRID_FILE ?= us_nga_egm08_25.tif
 # Code block visibility in the compiled Typst PDF: make pdf CODE=hide|show
 CODE := hide
 CODEFLAG = $(if $(filter hide,$(CODE)),--hide-code,)
-.PHONY: all install proj format lint security complexity typecheck check html pdf prep restore
+.PHONY: all install proj format lint security complexity typecheck check html pdf prep restore check-secrets protect-secrets
 
 all: format check
 
@@ -39,6 +39,13 @@ typecheck:
 
 check: lint security complexity typecheck
 
+check-secrets:
+	@echo "==> Scanning entire Git history for leaked secrets..."
+	gitleaks detect --source . --verbose --redact
+
+protect-secrets:
+	@echo "==> Scanning uncommitted changes for secrets..."
+	gitleaks protect --staged --verbose --redact
 
 cslc-qualification-notebook:
 	uv venv --python 3.12 .venv-qual --clear
