@@ -3,11 +3,7 @@ TESTS := $(CURDIR)/tests
 NOTEBOOKS := $(CURDIR)/notebooks
 DOCS := $(CURDIR)/docs
 
-# Deferred evaluation so Python runs only when calling `make proj`
-PROJ_DATA_DIR = $(shell uv run python -c "import pyproj; print(pyproj.datadir.get_data_dir())")
-GRID_URL := https://cdn.proj.org/us_nga_egm08_25.tif
-GRID_FILE := us_nga_egm08_25.tif
-GRID_ALIAS := Und_min1x1_egm2008_isw=82_WGS84_TideFree
+GRID_FILE ?= us_nga_egm08_25.tif
 
 # Code block visibility in the compiled Typst PDF: make pdf CODE=hide|show
 CODE := hide
@@ -16,21 +12,14 @@ CODEFLAG = $(if $(filter hide,$(CODE)),--hide-code,)
 
 all: format check
 
-install: proj
+install:
 	uv sync
+	$(MAKE) proj
 
 proj:
-	@echo "PyPROJ target directory: $(PROJ_DATA_DIR)"
-	@mkdir -p "$(PROJ_DATA_DIR)"
-	@if [ ! -f "$(PROJ_DATA_DIR)/$(GRID_FILE)" ]; then \
-		echo "Downloading $(GRID_FILE)..."; \
-		curl -fsSL "$(GRID_URL)" -o "$(PROJ_DATA_DIR)/$(GRID_FILE)"; \
-	else \
-		echo "$(GRID_FILE) already present."; \
-	fi
-	@echo "Creating symlink for EPSG grid alias..."
-	@cd "$(PROJ_DATA_DIR)" && ln -sf "$(GRID_FILE)" "$(GRID_ALIAS)"
-	@echo "Installation and configuration completed successfully!"
+	@echo "Ensuring geoid grid '$(GRID_FILE)' is installed..."
+	@uv run python -c "from cop_ard_app.utils import download_geoid_grid; download_geoid_grid(grid_name='$(GRID_FILE)')"
+	@echo "Grid verification completed."
 
 format:
 	uv run --extra formatter --frozen ruff format $(SOURCES) $(TESTS) $(NOTEBOOKS)

@@ -48,14 +48,52 @@ Install the processor with:
 make install
 ```
 
-`make install` is the supported installation path. It runs the `proj` target first, then `uv sync`:
+`make install` is the standard installation path for local development. It runs:
 
-* **`proj`** — downloads the EGM2008 geoid grid (`us_nga_egm08_25.tif`) from the PROJ CDN into the `pyproj` data directory reported by the environment, then creates the `Und_min1x1_egm2008_isw=82_WGS84_TideFree` alias symlink required for geoid-corrected heights. The download is skipped when the grid file is already present, so the target is safe to re-run.
-* **`uv sync`** — creates and updates the local `.venv` from `pyproject.toml` and the pinned `uv.lock`.
+- **`uv sync`** — creates or updates the local `.venv` from `pyproject.toml` and the pinned `uv.lock`.
+- **`proj`** — downloads the default EGM2008 geoid grid (`us_nga_egm08_25.tif`) to PROJ's standard user data directory (`pyproj.datadir.get_user_data_dir()`). If the file is already present, the download is skipped.
 
-Prerequisites: [`uv`](https://docs.astral.sh/uv/) on `PATH` and network access for the grid download. The project requires Python 3.13 (`>=3.13, <3.14`); `uv` provisions it automatically.
+**Prerequisites:** [`uv`](https://docs.astral.sh/uv/) on `PATH` and internet access for dependency and grid downloads. The project requires Python 3.13 (`>=3.13, <3.14`), which `uv` provisions automatically.
 
-Running `uv sync` directly is not sufficient: it skips the PROJ grid setup, and geoid-dependent processing fails at runtime.
+---
+
+### Installing from PyPI or Direct `uv sync`
+
+If you install the package directly via `pip` (or run `uv sync` without `make install`), the PROJ grid files are not downloaded automatically.
+
+#### Why Grid Files Are Required
+Transformations between ellipsoidal heights (e.g., WGS 84 `EPSG:4979`) and orthometric/geoid-related heights (e.g., Copernicus DEM / EGM2008 `EPSG:9518` or EGM96 `EPSG:9707`) require local vertical shift grid files.
+
+Because processing tasks and Dask workers enforce a **strictly offline environment** (`pyproj.network.set_network_enabled(False)`), PROJ will not fetch grids over the internet on the fly. Without the local grid file, worker validation in `GeoEnvPlugin` will halt execution with a `RuntimeError`.
+
+#### Downloading the Required Grid
+To provision the grid manually in your local environment, run:
+
+```bash
+uv run python -c "from cop_ard_app.utils import download_geoid_grid; download_geoid_grid()"
+```
+
+To install an alternative grid (e.g., EGM96 for historical DEM datasets):
+
+```bash
+# Using Python
+uv run python -c "from cop_ard_app.utils import download_geoid_grid; download_geoid_grid(grid_name='us_nga_egm96_15.tif')"
+
+# Or using Make
+make proj GRID_FILE=us_nga_egm96_15.tif
+```
+
+#### Grid Storage Location
+Grids are saved in PROJ's standard cross-platform user data directory:
+* **Linux:** `~/.local/share/proj/`
+* **macOS:** `~/Library/Application Support/proj/`
+* **Windows:** `%LOCALAPPDATA%\proj\`
+
+Because these grids are stored outside the virtual environment, they persist across `.venv` wipes and recreation. Alternatively, you can point to any custom directory containing your `.tif` grid files by setting the `PROJ_USER_WRITABLE_DIRECTORY` environment variable:
+
+```bash
+export PROJ_USER_WRITABLE_DIRECTORY=/path/to/custom/proj_grids
+```
 
 ## Dependency Management
 

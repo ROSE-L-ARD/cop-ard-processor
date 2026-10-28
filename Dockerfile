@@ -30,17 +30,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=secret,id=netrc,target=/root/.netrc \
     uv sync --frozen --extra cluster-plugin --no-editable
 
-# Download PROJ grid directly into PyPROJ's internal data directory after syncs
-RUN .venv/bin/python -c "\
-import urllib.request, os, pyproj; \
-datadir = pyproj.datadir.get_data_dir(); \
-url = 'https://cdn.proj.org/us_nga_egm08_25.tif'; \
-dest = os.path.join(datadir, 'us_nga_egm08_25.tif'); \
-print(f'Downloading {url} to {dest}...'); \
-urllib.request.urlretrieve(url, dest); \
-print('Download complete.'); \
-aliases = ['Und_min1x1_egm2008_isw=82_WGS84_TideFree', 'us_nga_egm2008_1.tif', 'us_nga_egm08_1.tif']; \
-[os.symlink('us_nga_egm08_25.tif', os.path.join(datadir, a)) for a in aliases if not os.path.exists(os.path.join(datadir, a))]; \
+# Download essential Earth Observation geoid grids (EGM2008 + EGM96)
+RUN uv run python -c "\
+import pyproj; \
+from cop_ard_app.utils import download_geoid_grid; \
+target = pyproj.datadir.get_data_dir(); \
+grids = ['us_nga_egm08_25.tif', 'us_nga_egm96_15.tif']; \
+[download_geoid_grid(grid_name=g, target_dir=target) for g in grids]; \
 "
 
 # --- Stage 2: Runtime ---
