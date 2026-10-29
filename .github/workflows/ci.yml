@@ -1,0 +1,65 @@
+name: Python Quality Checks
+
+# This tells GitHub to run the workflow on pushes to main,
+# and whenever a Pull Request is opened against main.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    continue-on-error: true
+
+    # env and steps must align directly under runs-on
+    env:
+      SOURCES: "cop_ard_processor"
+      TESTS: "tests"
+      COVERAGE_THRESHOLD: "70"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Register the personal access token
+        run: echo "${{ secrets.GIT_PAT }}" | gh auth login --with-token
+
+      - name: Configure the Git credential helper
+        run: gh auth setup-git
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Linting
+        run: uv run --extra linter --frozen ruff check --no-fix $SOURCES $TESTS
+
+      - name: Formatting
+        run: uv run --extra formatter --frozen ruff format --check $SOURCES $TESTS
+
+      - name: Typing
+        run: uv run --extra typing --frozen mypy $SOURCES $TESTS
+
+      - name: Unit tests
+        run: uv run --extra tests --frozen pytest -s -vv $TESTS
+
+      - name: Unit test coverage
+        run: uv run --extra tests --frozen pytest --cov=$SOURCES --cov-report= --cov-fail-under=$COVERAGE_THRESHOLD $TESTS
+
+      - name: Code complexity
+        run: uv run --extra complexity --frozen python -m xenon --max-average b --max-modules c --max-absolute d $SOURCES
+
+      - name: Vulnerability scanning
+        run: uv run --extra security --frozen python -m bandit -c bandit.yml -r $SOURCES
+
+      - name: Documentation coverage
+        run: uv run --extra doc-cov --frozen docstr-coverage $SOURCES
+
