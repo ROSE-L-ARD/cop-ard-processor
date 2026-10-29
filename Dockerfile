@@ -21,7 +21,6 @@ COPY pyproject.toml uv.lock ./
 
 # Pre-install dependencies without local package code
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=secret,id=netrc,target=/root/.netrc \
     uv sync --frozen --extra cluster-plugin --no-install-project --no-editable
 
 # Copy repository source code
@@ -29,7 +28,6 @@ COPY . .
 
 # Final project synchronization into .venv
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=secret,id=netrc,target=/root/.netrc \
     uv sync --frozen --extra cluster-plugin --no-editable
 
 # Download essential Earth Observation geoid grids directly into venv PyPROJ data directory
