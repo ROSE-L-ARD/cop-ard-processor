@@ -18,7 +18,6 @@ import pytest
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
-from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
 
@@ -45,11 +44,7 @@ def test_payload():
             logger.info(f"Checking output store: {output}")
             logger.info(f"Store metadata: {output_store}")
 
-            storage_opts = (
-                output_store.get("storage_options", {})
-                if isinstance(output_store, dict)
-                else {}
-            )
+            storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
             storage_opts = is_local(output_store["path"], storage_opts)
 
             data = xr.open_datatree(
@@ -68,9 +63,7 @@ def test_payload():
 
                 # Verify single-polarization isolation: only 'VV' must be present
                 if output == "cslcs":
-                    pols = set(
-                        element.measurements.cslc.polarization.values.astype(str)
-                    )
+                    pols = set(element.measurements.cslc.polarization.values.astype(str))
                     assert pols == {"VV"}, (
                         f"Pass Criteria Failed: Single-polarization check failed for CSLC product. "
                         f"Expected strictly {{'VV'}}, but found: {pols}"
@@ -119,10 +112,7 @@ def test_payload():
         )
 
     # 6. High-Verbosity DEBUG Logging Verification
-    has_debug_logs = any(
-        log.get("log_level") == "debug" or log.get("level") == "debug"
-        for log in captured
-    )
+    has_debug_logs = any(log.get("log_level") == "debug" or log.get("level") == "debug" for log in captured)
     assert has_debug_logs or len(captured) > 0, (
         "Pass Criteria Failed: Extended diagnostic logs in DEBUG mode were not generated."
     )

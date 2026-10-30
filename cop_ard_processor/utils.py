@@ -11,31 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import functools
 import json
 import logging
 import os
 import pathlib
 import time
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from collections.abc import Callable
 from typing import Any, Mapping
 
-import eopf
 import numpy as np
 import xarray as xr
 from cop_ard_app.io import Path, makedirs, normpath, read
 from cop_ard_core.logger import logger
 from eopf.common.file_utils import AnyPath
 from eopf.common.temp_utils import EOTemporaryFolder
-from eopf.computing.breakpoint import declare_as_breakpoint
 from eopf.computing.types import ADF
 from eopf.config.config import EOConfiguration
-from eopf.exceptions.errors import CriticalException
 from eopf.triggering.general_utils import resolve_storage_options
 
-import cop_ard_processor
 
 CONFIG = f"{pathlib.Path(__file__).parent.resolve()}/conf/CONFIG.json"
 

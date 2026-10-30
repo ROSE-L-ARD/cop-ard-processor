@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from pathlib import Path
 
 import pytest
-import rioxarray
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
-from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
-from pyproj import CRS
 from structlog.testing import capture_logs
 
 from cop_ard_processor.structure import check_ARD_outputs
@@ -51,12 +47,7 @@ def test_payload():
             storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
             storage_opts = is_local(output_store["path"], storage_opts)
 
-            data = xr.open_datatree(
-                output_store["path"],
-                engine="zarr",
-                chunks={},
-                storage_options=storage_opts,
-            )
+            data = xr.open_datatree(output_store["path"], engine="zarr", chunks={}, storage_options=storage_opts)
 
             if output not in ["cslcs", "gmlp"]:
                 updates[output] = data
@@ -82,11 +73,14 @@ def test_payload():
         )
 
     assert any("Skipping ETAD step" in event for event in captured_events), "ETAD should be skipped."
-    
 
-    assert  any("Skipping image matching" in event for event in captured_events), "Image matching was not skipped."
-    assert not any("Skipping ESD step" in event or "Skipping ESD" in event for event in captured_events), "ESD was skipped."
+    assert any("Skipping image matching" in event for event in captured_events), "Image matching was not skipped."
+    assert not any("Skipping ESD step" in event or "Skipping ESD" in event for event in captured_events), (
+        "ESD was skipped."
+    )
     assert any("Skipping split spectrum" in event for event in captured_events), "Split spectrum was not skipped."
 
     # 4. Check external orbit bypass
-    assert any("Skipping external orbit" in event for event in captured_events), "Skip trace for 'external orbit' missing."
+    assert any("Skipping external orbit" in event for event in captured_events), (
+        "Skip trace for 'external orbit' missing."
+    )

@@ -22,13 +22,20 @@ from pathlib import Path
 
 import pytest
 import xarray as xr
-
-from cop_ard_processor.processing_units import CMLP, Coregistration, Geocoding, ReferenceDEM, ReferenceGeometry, ReferenceUpdate
 from eopf.common.functions_utils import camel_to_snake
 from eopf.computing.types import AuxiliaryDataFile
 from eopf.computing.validation import validate_run_parameters
 from eopf.computing.validation_model import EOProcessingModel
 from eopf.exceptions.errors import EOComputingModelError
+
+from cop_ard_processor.processing_units import (
+    CMLP,
+    Coregistration,
+    Geocoding,
+    ReferenceDEM,
+    ReferenceGeometry,
+    ReferenceUpdate,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -41,13 +48,25 @@ CASES = [
     (
         Coregistration,
         {"slcs": 1, "dem": 1, "simulation_ref": 1, "simulation_ml": 1},
-        {"REFDB": 1},
+        {"REFDB": 1, "IONO": 0},
         {"initialize_current_reference": True},
         {"coherence_threshold_image_matching": 2.5},
     ),
-    (ReferenceUpdate, {"slcs": 1, "dem": 0, "simulation_ref": 0, "simulation_ml": 0}, {"REFDB": 1}, {}, {"stable_interval_days": "365"}),
+    (
+        ReferenceUpdate,
+        {"slcs": 1, "dem": 0, "simulation_ref": 0, "simulation_ml": 0},
+        {"REFDB": 1},
+        {},
+        {"stable_interval_days": "365"},
+    ),
     (CMLP, {"slcs": 1}, {"REFDB": 1}, {}, {"max_past_stable_history": 2.5}),
-    (Geocoding, {"cmlp": 1, "slcs": 1, "simulation_ref": 1, "simulation_ml": 1}, {"REFDB": 1}, {}, {"enable_dask": "no"}),
+    (
+        Geocoding,
+        {"cmlp": 1, "slcs": 1, "simulation_ref": 1, "simulation_ml": 1},
+        {"REFDB": 1},
+        {},
+        {"enable_dask": "no"},
+    ),
 ]
 CASE_IDS = ["reference-dem", "reference-geometry", "coregistration", "reference-update", "cmlp", "geocoding"]
 

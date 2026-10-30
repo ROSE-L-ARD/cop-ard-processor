@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from pathlib import Path
 
 import pytest
-import rioxarray
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
 from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
-from pyproj import CRS
 from structlog.testing import capture_logs
 
 from cop_ard_processor.structure import check_ARD_outputs
@@ -51,12 +48,7 @@ def test_payload():
             storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
             storage_opts = is_local(output_store["path"], storage_opts)
 
-            data = xr.open_datatree(
-                output_store["path"],
-                engine="zarr",
-                chunks={},
-                storage_options=storage_opts,
-            )
+            data = xr.open_datatree(output_store["path"], engine="zarr", chunks={}, storage_options=storage_opts)
 
             if output not in ["cslcs", "gmlp"]:
                 updates[output] = data
@@ -120,4 +112,3 @@ def test_payload():
             f"{refdb_path}/reference_db_dynamic",
             reference_id=reference_id,
         )
-

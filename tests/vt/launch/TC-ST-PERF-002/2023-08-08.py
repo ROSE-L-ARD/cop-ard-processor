@@ -68,7 +68,6 @@ def validate_and_extract_times(output_stores: dict, captured: list) -> tuple[flo
 
     # 2. Extract logs and perform mandatory traces & time extraction
     captured_events = [str(log.get("event", "")) for log in captured]
-    captured_logs_text = "\n".join(captured_events)
 
     extracted_times = {}
 

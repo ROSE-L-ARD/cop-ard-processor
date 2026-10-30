@@ -16,7 +16,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
 
 from scripts.run_payload import run_payload
@@ -51,16 +50,13 @@ def test_payload():
             f"Captured events:\n{captured_logs_text}"
         )
 
-
     # 4. Verify 'dem_interpolation' parameter in execution parameters dictionary
     interpolation_found = False
     for log in captured:
         # Check structured key directly if available in log payload
         if "dem_interpolation" in log:
             val = str(log["dem_interpolation"]).lower()
-            assert "linear" in val, (
-                f"Pass Criteria Failed: Expected 'dem_interpolation' to be 'linear', found '{val}'."
-            )
+            assert "linear" in val, f"Pass Criteria Failed: Expected 'dem_interpolation' to be 'linear', found '{val}'."
             interpolation_found = True
             break
         # Fallback check on string representation of event/log dictionary
