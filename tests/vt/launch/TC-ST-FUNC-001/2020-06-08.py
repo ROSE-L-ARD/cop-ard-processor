@@ -18,7 +18,6 @@ import pytest
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
-from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
 

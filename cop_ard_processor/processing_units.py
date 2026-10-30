@@ -728,9 +728,7 @@ class Coregistration(EOProcessingUnit):
         multilook_split_spectrum = kwargs.get(
             "multilook_split_spectrum", config["Coregistration"]["multilook_split_spectrum"]
         )
-        multilook_esd = kwargs.get(
-            "multilook_esd", config["Coregistration"]["multilook_esd"]
-        )
+        multilook_esd = kwargs.get("multilook_esd", config["Coregistration"]["multilook_esd"])
         esd_poly_degree = kwargs.get("esd_poly_degree", config["Coregistration"]["esd_poly_degree"])
         split_spectrum_poly_degree = kwargs.get(
             "split_spectrum_poly_degree", config["Coregistration"]["split_spectrum_poly_degree"]
@@ -970,8 +968,8 @@ class Coregistration(EOProcessingUnit):
                 enable_dask=enable_dask,
                 multiburst=multiburst,
                 reference_id=reference_id,
-                multilook = multilook_esd,
-                coherence_threshold = coherence_threshold_esd,
+                multilook=multilook_esd,
+                coherence_threshold=coherence_threshold_esd,
             )
         else:
             logger.info("Skipping ESD step (disabled in configuration).")

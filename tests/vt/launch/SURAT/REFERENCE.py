@@ -16,7 +16,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
 
 from scripts.run_payload import run_payload

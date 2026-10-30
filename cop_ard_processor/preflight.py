@@ -44,10 +44,10 @@ from pathlib import Path
 from typing import Any
 
 import xarray as xr
+from cop_ard_app.io import Path as Path_io
 from lxml import etree
 
 from cop_ard_processor.utils import get_instrument_mode
-from cop_ard_app.io import Path as Path_io
 
 CONFIG_PATH = Path(__file__).parent / "conf" / "CONFIG.json"
 
@@ -640,10 +640,10 @@ class EtadStackValidator:
             violations.append(Violation(scope, f"ETAD product directory does not exist: {path}"))
             return
 
-        measurement_files = sorted(product_dir.glob("measurement/*.nc"))
+        measurement_files = sorted([str(path) for path in product_dir.glob("measurement/*.nc")])
         if not measurement_files:
             violations.append(Violation(scope, "no measurement/*.nc file found"))
-        if not sorted(product_dir.glob("annotation/*.EOF")):
+        if not sorted([str(path) for path in product_dir.glob("annotation/*.EOF")]):
             violations.append(Violation(scope, "no annotation/*.EOF file found"))
         if not measurement_files:
             return
@@ -652,7 +652,7 @@ class EtadStackValidator:
         try:
             tree = xr.open_datatree(str(nc_path), engine="h5netcdf", chunks={}, cache=False)
         except Exception as exc:
-            violations.append(Violation(scope, f"failed to open {nc_path.name}: {exc}"))
+            violations.append(Violation(scope, f"failed to open {nc_path}: {exc}"))
             return
 
         try:
@@ -720,7 +720,7 @@ class SafeXmlValidator:
                 violations.append(Violation(file_scope, f"malformed XML: {exc}"))
                 continue
 
-            entry = schemas.get(self._split_tag(doc.getroot().tag)[1])
+            entry = schemas.get(self._split_tag(str(doc.getroot().tag))[1])
             if entry is None:
                 continue
             schema, schema_file = entry
@@ -756,7 +756,7 @@ class SafeXmlValidator:
         """Names of the elements declared directly under ``<xsd:schema>``."""
         root = etree.parse(str(xsd_path)).getroot()
         return [
-            child.get("name")
+            child.get("name")  # type: ignore
             for child in root
             if isinstance(child.tag, str)
             and SafeXmlValidator._split_tag(child.tag)[1] == "element"

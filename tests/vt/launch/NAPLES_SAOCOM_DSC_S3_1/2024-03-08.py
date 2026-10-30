@@ -55,8 +55,8 @@ def test_payload():
                 check_ARD_outputs(element, output, logger=logger)
 
     captured_events = [str(log.get("event", "")) for log in captured]
-    
-    mandatory_units = ['Ingestion Unit', 'ReferenceDEM Unit', 'ReferenceGeometry Unit', 'Coregistration Unit']
+
+    mandatory_units = ["Ingestion Unit", "ReferenceDEM Unit", "ReferenceGeometry Unit", "Coregistration Unit"]
     for unit in mandatory_units:
         assert any(f"Started : {unit}" in event for event in captured_events), (
             f"Mandatory trace 'Started : {unit}' missing."

@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from pathlib import Path
 
 import pytest
-import rioxarray
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
 from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
-from pyproj import CRS
 from structlog.testing import capture_logs
 
 from cop_ard_processor.structure import check_ARD_outputs
@@ -30,7 +27,6 @@ from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-PERF-008" / "1999-12-31.yaml"
-
 
 
 @pytest.mark.ard
@@ -116,4 +112,3 @@ def test_payload():
             f"{refdb_path}/reference_db_dynamic",
             reference_id=reference_id,
         )
-
