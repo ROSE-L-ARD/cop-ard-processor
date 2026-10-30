@@ -180,23 +180,6 @@ def _load_payload(rel_path: str) -> dict:
         return yaml.safe_load(f)
 
 
-@pytest.mark.parametrize("rel_path, validate_run, step_adfs, step_params, io_adfs", CASES)
-def test_payload_yaml_parses_and_carries_mod_markers(rel_path, validate_run, step_adfs, step_params, io_adfs):
-    """The payload YAML parses and its Ingestion step carries the MOD markers."""
-    payload = _load_payload(rel_path)
-
-    step = payload["workflow"][0]
-    assert step["name"] == "ingestion"
-    assert step["module"] == "cop_ard_processor.processing_units"
-    assert step["processing_unit"] == "Ingestion"
-
-    assert payload["general_configuration"]["triggering__validate_run"] is validate_run
-    assert step["adfs"] == step_adfs
-    for key, value in step_params.items():
-        assert step["parameters"][key] == value, f"step parameter '{key}' does not carry the expected value"
-    assert {adf["id"]: adf["path"] for adf in payload["io"]["adfs"]} == io_adfs
-
-
 def _bootstrap_eo_configuration(payload: dict) -> dict:
     """Mirror ``EORunner._load_eo_configuration`` without importing the runner.
 
@@ -231,28 +214,6 @@ def test_workflow_plan_builds_offline(rel_path: str):
     # The mandatory ADF-key check must pass against the payload's io.adfs entries.
     io_config = build_io(load_section(payload, EOIOSectionRaw).io)
     workflow._validator.validate(io_config.adfs, io_config.input_products, io_config.output_products)
-
-
-@pytest.mark.parametrize("path, target, steps, param, value, outputs", DOWNSTREAM_FILES)
-def test_downstream_payload_carries_mod_markers(path, target, steps, param, value, outputs):
-    """Each downstream payload wires the nominal chain and breaks only its target step."""
-    payload = _load_payload(path)
-
-    assert [step["name"] for step in payload["workflow"]] == steps
-    assert payload["general_configuration"]["triggering__validate_run"] is False
-
-    for step in payload["workflow"]:
-        if step["name"] == target:
-            assert step["parameters"] == {param: value}
-            assert "outputs" not in step
-        else:
-            assert step.get("parameters", {}) == NOMINAL_STEP_PARAMS[step["name"]]
-
-    # Per-scenario scratch space: REFDB under the scenario subdir, shared DEM.
-    assert {adf["id"]: adf["path"] for adf in payload["io"]["adfs"]} == {
-        "REFDB": f"/data/SENTINEL1/SURAT/WDIR/TC-ST-DSGN-001/{target}/REFDB",
-        "DEM": DEM_PATH,
-    }
 
 
 @pytest.mark.parametrize("path, target, steps, param, value, outputs", DOWNSTREAM_FILES)

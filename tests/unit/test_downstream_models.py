@@ -48,7 +48,7 @@ CASES = [
     (
         Coregistration,
         {"slcs": 1, "dem": 1, "simulation_ref": 1, "simulation_ml": 1},
-        {"REFDB": 1},
+        {"REFDB": 1, "IONO": 0},
         {"initialize_current_reference": True},
         {"coherence_threshold_image_matching": 2.5},
     ),
