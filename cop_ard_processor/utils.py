@@ -30,7 +30,6 @@ from eopf.computing.types import ADF
 from eopf.config.config import EOConfiguration
 from eopf.triggering.general_utils import resolve_storage_options
 
-
 CONFIG = f"{pathlib.Path(__file__).parent.resolve()}/conf/CONFIG.json"
 
 

@@ -62,7 +62,7 @@ CASES = [
     (CMLP, {"slcs": 1}, {"REFDB": 1}, {}, {"max_past_stable_history": 2.5}),
     (
         Geocoding,
-        {"cmlp": 1, "slcs": 1, "simulation_ref": 1, "simulation_ml": 1},
+        {"cmlp": 1, "slcs": 1, "simulation_ref": 0, "simulation_ml": 0},
         {"REFDB": 1},
         {},
         {"enable_dask": "no"},

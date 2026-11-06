@@ -8,7 +8,7 @@ GRID_FILE ?= us_nga_egm08_25.tif
 # Code block visibility in the compiled Typst PDF: make pdf CODE=hide|show
 CODE := hide
 CODEFLAG = $(if $(filter hide,$(CODE)),--hide-code,)
-.PHONY: all install proj format lint security complexity typecheck check html pdf prep restore check-secrets protect-secrets
+.PHONY: all install proj format lint security complexity typecheck check html pdf prep restore check-secrets protect-secrets tests
 
 all: format check
 
@@ -22,7 +22,7 @@ proj:
 	@echo "Grid verification completed."
 
 format:
-	uv run --extra formatter --frozen ruff format $(SOURCES) $(TESTS) $(NOTEBOOKS)
+	uv run --extra formatter --frozen ruff format $(SOURCES) $(TESTS)
 	uv run --extra formatter --frozen ruff check --select I --fix $(SOURCES) $(TESTS)
 
 lint:
@@ -35,7 +35,8 @@ complexity:
 	uv run --extra complexity --frozen python -m xenon --max-average b --max-modules c --max-absolute d $(SOURCES)
 
 typecheck:
-	uv run --extra typing --frozen python -m mypy $(SOURCES) --allow-redefinition
+	uv run --extra typing --frozen python -m mypy $(SOURCES) $(TESTS)/unit --allow-redefinition
+	find tests/vt/launch -mindepth 1 -maxdepth 1 -type d | xargs -P $$(nproc) -I {} uv run --extra typing --frozen python -m mypy "{}" --allow-redefinition
 
 check: lint security complexity typecheck
 
@@ -78,3 +79,6 @@ restore:
 	@printf "\n=== Restoring original state ===\n"
 	@# 1. Restore from backup if .bak files exist
 	@find $(NOTEBOOKS) -name "*.ipynb.bak" -exec sh -c 'mv "$$0" "$${0%.bak}"' {} \;
+
+tests:
+	uv run --extra tests --frozen pytest -s -vv $(TESTS)/unit

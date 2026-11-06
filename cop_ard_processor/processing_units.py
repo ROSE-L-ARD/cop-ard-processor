@@ -1416,7 +1416,6 @@ class Geocoding(EOProcessingUnit):
 
         log_processing_parameters(execution_parameters, self, logger)
 
-
         simulation_tree, simulation_ml_tree = get_simulation_trees(
             slcs=slcs,
             working_directory=working_directory_reference_db_static,
