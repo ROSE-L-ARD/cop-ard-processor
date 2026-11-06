@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from pathlib import Path
 
 import pytest
-import rioxarray
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
-from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
 from pyproj import CRS
 from structlog.testing import capture_logs

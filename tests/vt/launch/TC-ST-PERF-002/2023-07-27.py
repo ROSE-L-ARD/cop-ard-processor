@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from pathlib import Path
 
 import pytest
-import rioxarray
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
 from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
-from pyproj import CRS
 from structlog.testing import capture_logs
 
 from cop_ard_processor.structure import check_ARD_outputs
@@ -82,10 +79,6 @@ def test_payload():
             f"Pass Criteria Failed: Mandatory log trace '{expected_trace}' was not found in captured execution logs.\n"
             f"Captured events:\n{captured_logs_text}"
         )
-
-    # 4. Extract and verify specific pipeline parameters (Posting, Spacing, CRS)
-    posting_found = False
-    spacing_found = False
 
     # 6. Optional Steps Bypass Verification
     bypassed_steps = [

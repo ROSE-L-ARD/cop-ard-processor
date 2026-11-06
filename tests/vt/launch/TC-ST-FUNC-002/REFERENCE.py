@@ -12,17 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 from pathlib import Path
 
 import pytest
-import xarray as xr
 import yaml
-from cop_ard_app.io import is_local
-from cop_ard_app.utils import update_reference_database
-from cop_ard_core.logger import logger
 
-from cop_ard_processor.structure import check_ARD_outputs
 from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
@@ -32,10 +26,8 @@ yaml_path = f"{RP_BASE_PATH}/triggering/TC-ST-FUNC-002/REFERENCE.yaml"
 @pytest.mark.ard
 def test_payload():
 
-
     with open(yaml_path, encoding="utf-8") as f:
         payload = yaml.safe_load(f)
 
     # 1. Execute full CSLC chain
-    output_stores = run_payload(payload, dry_run=False)
-    
+    _ = run_payload(payload, dry_run=False)

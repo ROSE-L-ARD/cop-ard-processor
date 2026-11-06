@@ -45,32 +45,8 @@ workflow:
       enable_esd: false
     adfs:
       REFDB: REFDB
-  - name: cmlp
-    module: cop_ard_processor.processing_units
-    processing_unit: CMLP
-    inputs:
-      slcs: coregistration.slcs
-    parameters:
-      posting: { "azimuth_time": 10, "slant_range_time": 10 }
-    adfs:
-      REFDB: REFDB
     outputs:
-      current_reference: current_reference
-      stable_references: stable_references
-  - name: geocoding
-    module: cop_ard_processor.processing_units
-    processing_unit: Geocoding
-    inputs:
-      cmlp: cmlp.cmlp
-      slcs: coregistration.slcs
-      simulation_ref: reference_geometry.simulation_ref
-      simulation_ml: reference_geometry.simulation_ml
-    parameters:
-      spacing: {x: 50, y: 50}
-    adfs:
-      REFDB: REFDB
-    outputs:
-      gmlp: gmlp
+      cslcs: cslcs
 io:
   adfs:
     - id: REFDB
@@ -78,20 +54,8 @@ io:
     - id: DEM
       path: /data/SENTINEL1/MOROCCO/dem
   output_products:
-    - id: gmlp
-      path: /data/SENTINEL1/MOROCCO/EOPF/OUTPUT/TC-ST-FUNC-009/GMLP/gmlp_2021-06-19.zarr
-      engine: cpm_zarr
-      type: file
-      writer_params:
-        mode: 'w'
-    - id: current_reference
-      path: /data/SENTINEL1/MOROCCO/EOPF/OUTPUT/TC-ST-FUNC-009/CURRENT_REFERENCE/current_reference_2021-06-19.zarr
-      engine: cpm_zarr
-      type: file
-      writer_params:
-        mode: 'w'
-    - id: stable_references
-      path: /data/SENTINEL1/MOROCCO/EOPF/OUTPUT/TC-ST-FUNC-009/STABLE_REFERENCES/stable_reference_2021-06-19.zarr
+    - id: cslcs
+      path: /data/SENTINEL1/MOROCCO/EOPF/OUTPUT/TC-ST-FUNC-009/CSLC/cslcs_2021-06-19.zarr
       engine: cpm_zarr
       type: file
       writer_params:

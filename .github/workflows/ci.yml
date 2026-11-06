@@ -17,7 +17,7 @@ jobs:
     # env and steps must align directly under runs-on
     env:
       SOURCES: "cop_ard_processor"
-      TESTS: "tests"
+      TESTS: "tests/unit"
       COVERAGE_THRESHOLD: "70"
 
     steps:
@@ -45,8 +45,13 @@ jobs:
       - name: Formatting
         run: uv run --extra formatter --frozen ruff format --check $SOURCES $TESTS
 
-      - name: Typing
-        run: uv run --extra typing --frozen mypy $SOURCES $TESTS
+      - name: Typing (Source and Unit Tests)
+        run: uv run --extra typing --frozen mypy $SOURCES $TESTS --allow-redefinition
+
+      - name: Typing (Validation Tests in Parallel)
+        run: |
+          find tests/vt/launch -mindepth 1 -maxdepth 1 -type d | \
+            xargs -P $(nproc) -I {} uv run --extra typing --frozen mypy "{}" --allow-redefinition
 
       - name: Unit tests
         run: uv run --extra tests --frozen pytest -s -vv $TESTS
@@ -62,4 +67,3 @@ jobs:
 
       - name: Documentation coverage
         run: uv run --extra doc-cov --frozen docstr-coverage $SOURCES
-

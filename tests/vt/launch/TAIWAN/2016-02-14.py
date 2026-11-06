@@ -13,18 +13,21 @@
 # limitations under the License.
 
 from pathlib import Path
+
 import pytest
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
+from cop_ard_app.utils import update_reference_database
 from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
+
 from cop_ard_processor.structure import check_ARD_outputs
 from scripts.run_payload import run_payload
-from cop_ard_app.utils import update_reference_database 
 
 RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = RP_BASE_PATH / "triggering" / "TAIWAN" / "2016-02-14.yaml"
+
 
 @pytest.mark.ard
 def test_payload():
@@ -34,48 +37,53 @@ def test_payload():
     with capture_logs() as captured:
         output_stores = run_payload(payload, dry_run=False)
         updates = {}
-        
+
         for output, output_store in output_stores.items():
             logger.info(f"Checking output store: {output}")
             logger.info(f"Store metadata: {output_store}")
-            
+
             storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
             storage_opts = is_local(output_store["path"], storage_opts)
-            
-            data = xr.open_datatree(
-                output_store["path"], 
-                engine="zarr", 
-                chunks={}, 
-                storage_options=storage_opts
-            )
-            
+
+            data = xr.open_datatree(output_store["path"], engine="zarr", chunks={}, storage_options=storage_opts)
+
             if output not in ["cslcs", "gmlp"]:
                 updates[output] = data
                 continue
-                
+
             for element in data.values():
                 check_ARD_outputs(element, output, logger=logger)
-                
+
     captured_events = [str(log.get("event", "")) for log in captured]
-    
-    mandatory_units = ['Ingestion Unit', 'ReferenceDEM Unit', 'ReferenceGeometry Unit', 'Coregistration Unit']
+
+    mandatory_units = ["Ingestion Unit", "ReferenceDEM Unit", "ReferenceGeometry Unit", "Coregistration Unit"]
     for unit in mandatory_units:
-        assert any(f"Started : {unit}" in event for event in captured_events), f"Mandatory trace 'Started : {unit}' missing."
+        assert any(f"Started : {unit}" in event for event in captured_events), (
+            f"Mandatory trace 'Started : {unit}' missing."
+        )
 
     # 1. Verification for ETAD
     assert any("Skipping ETAD step" in event for event in captured_events), "ETAD should be skipped."
-    
+
     # 2. Verification for ESD
-    assert any("Skipping ESD" in event or "Skipping ESD step" in event for event in captured_events), "Skip trace for 'ESD' missing."
+    assert any("Skipping ESD" in event or "Skipping ESD step" in event for event in captured_events), (
+        "Skip trace for 'ESD' missing."
+    )
 
     # 3. Verification for Split Spectrum
-    assert not any("Skipping split spectrum" in event for event in captured_events), "Split spectrum was unexpectedly skipped."
+    assert not any("Skipping split spectrum" in event for event in captured_events), (
+        "Split spectrum was unexpectedly skipped."
+    )
 
     # 4. Verification for Image Matching
-    assert not any("Skipping image matching" in event for event in captured_events), "Image matching was unexpectedly skipped."
+    assert not any("Skipping image matching" in event for event in captured_events), (
+        "Image matching was unexpectedly skipped."
+    )
 
     # 5. Verification for External Orbit
-    assert not any("Skipping external orbit" in event for event in captured_events), "External orbit was unexpectedly skipped."
+    assert not any("Skipping external orbit" in event for event in captured_events), (
+        "External orbit was unexpectedly skipped."
+    )
     assert any("orbit" in event.lower() for event in captured_events), "External orbit trace missing."
 
     # 6. Reference Database Persistence

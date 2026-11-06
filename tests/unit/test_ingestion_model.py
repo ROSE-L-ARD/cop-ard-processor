@@ -17,12 +17,12 @@ import json
 from pathlib import Path
 
 import pytest
-
-from cop_ard_processor.processing_units import Ingestion
 from eopf.computing.types import AuxiliaryDataFile
 from eopf.computing.validation import validate_run_parameters
 from eopf.computing.validation_model import EOProcessingModel
 from eopf.exceptions.errors import EOComputingModelError
+
+from cop_ard_processor.processing_units import Ingestion
 
 pytestmark = pytest.mark.unit
 

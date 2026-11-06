@@ -64,11 +64,12 @@ def validate_and_extract_times(output_stores: dict, captured: list) -> tuple[flo
 
         if output in ["cslcs", "gmlp"]:
             for element in data.values():
+                if not isinstance(element, xr.DataTree):
+                    raise TypeError(f"Expected an 'xr.DataTree' instance, got '{type(element).__name__}'.")
                 check_ARD_outputs(element, output, logger=logger)
 
     # 2. Extract logs and perform mandatory traces & time extraction
     captured_events = [str(log.get("event", "")) for log in captured]
-    captured_logs_text = "\n".join(captured_events)
 
     extracted_times = {}
 

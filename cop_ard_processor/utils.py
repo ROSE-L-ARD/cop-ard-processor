@@ -11,39 +11,52 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
+"""Utility functions, file path handlers, and execution logging for COP ARD Processor."""
+
 import functools
 import json
 import logging
 import os
 import pathlib
 import time
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from collections.abc import Callable
 from typing import Any, Mapping
 
-import eopf
 import numpy as np
 import xarray as xr
 from cop_ard_app.io import Path, makedirs, normpath, read
 from cop_ard_core.logger import logger
 from eopf.common.file_utils import AnyPath
 from eopf.common.temp_utils import EOTemporaryFolder
-from eopf.computing.breakpoint import declare_as_breakpoint
 from eopf.computing.types import ADF
 from eopf.config.config import EOConfiguration
-from eopf.exceptions.errors import CriticalException
 from eopf.triggering.general_utils import resolve_storage_options
-
-import cop_ard_processor
 
 CONFIG = f"{pathlib.Path(__file__).parent.resolve()}/conf/CONFIG.json"
 
 
 def log_time(block_id: str, logger: logging.Logger):
+    """Log the start and completion wall-clock execution time of a callable.
+
+    Parameters
+    ----------
+    block_id : str
+        Human-readable identifier describing the execution block.
+    logger : logging.Logger
+        Logger instance used to emit timing messages.
+
+    Returns
+    -------
+    Callable
+        Decorator wrapping the target method or function.
+    """
+
     def decorator(method: Callable[..., Any]) -> Callable[..., Any]:
+        """Wrap the method with timing measurement logs."""
+
         @functools.wraps(method)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            """Execute wrapped callable and record wall-clock elapsed time."""
             start_time = time.perf_counter()
             logger.info(f"Started : {block_id}")
             output = method(*args, **kwargs)
@@ -130,6 +143,20 @@ def get_wdir_static(adfs: Mapping[str, ADF] | None) -> tuple[str, str, dict[str,
 
 
 def get_adf(adf, ensure_local: bool = False):
+    """Instantiate a cop_ard_app Path object from an ADF descriptor.
+
+    Parameters
+    ----------
+    adf : Any
+        Auxiliary Data File object containing path and optional storage parameters.
+    ensure_local : bool, default False
+        Whether to stage the remote ADF file locally on the filesystem.
+
+    Returns
+    -------
+    Path
+        Instantiated Path object.
+    """
     storage_options = None
     path = adf.path
     params = adf.adf_params
@@ -298,10 +325,12 @@ def get_instrument_mode(in_files: list[str]) -> str:
 
 
 def _get_slcs_path(workdir_path_dynamic: str):
+    """Construct the standardized subpath for dynamic SLC intermediate artifacts."""
     return os.path.join(workdir_path_dynamic, "slcs")
 
 
 def _is_multiburst(slcs: xr.DataTree):
+    """Check whether the input DataTree represents a multiburst TOPSAR acquisition."""
     return "bursts" in slcs
 
 
