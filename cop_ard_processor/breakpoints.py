@@ -118,6 +118,7 @@ def resumable_breakpoint(
         Callable
             The wrapped callable intercepting execution.
         """
+
         @wraps(func_in)
         def _method_wrapper(
             *args: Any,
