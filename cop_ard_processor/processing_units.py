@@ -9,9 +9,16 @@ from cop_ard_app.etad import import_ETAD
 from cop_ard_app.gmlp import stack_gmlp
 from cop_ard_app.io import Path
 from cop_ard_app.matching import estimate_poly_matching, stack_disparity
-from cop_ard_app.model import extract_acquisition_dates, extract_orbits, update_coreg, update_gmlp, extract_acquisition_id
+from cop_ard_app.model import (
+    _normalize_input_slcs,
+    extract_acquisition_dates,
+    extract_acquisition_id,
+    extract_orbits,
+    update_coreg,
+    update_gmlp,
+)
 from cop_ard_app.orbit import import_ORBIT
-from cop_ard_app.simulation import stack_simulation, stack_simulation_ml
+from cop_ard_app.simulation import get_simulation_trees, stack_simulation, stack_simulation_ml
 from cop_ard_app.slc import finalize_import, import_slc_stack
 from cop_ard_app.split_spectrum import split_spectrum
 from cop_ard_app.utils import build_coreg_poly_dict, get_bbox
@@ -722,9 +729,7 @@ class Coregistration(EOProcessingUnit):
         multilook_split_spectrum = kwargs.get(
             "multilook_split_spectrum", config["Coregistration"]["multilook_split_spectrum"]
         )
-        multilook_esd = kwargs.get(
-            "multilook_esd", config["Coregistration"]["multilook_esd"]
-        )
+        multilook_esd = kwargs.get("multilook_esd", config["Coregistration"]["multilook_esd"])
         esd_poly_degree = kwargs.get("esd_poly_degree", config["Coregistration"]["esd_poly_degree"])
         split_spectrum_poly_degree = kwargs.get(
             "split_spectrum_poly_degree", config["Coregistration"]["split_spectrum_poly_degree"]
@@ -964,8 +969,8 @@ class Coregistration(EOProcessingUnit):
                 enable_dask=enable_dask,
                 multiburst=multiburst,
                 reference_id=reference_id,
-                multilook = multilook_esd,
-                coherence_threshold = coherence_threshold_esd,
+                multilook=multilook_esd,
+                coherence_threshold=coherence_threshold_esd,
             )
         else:
             logger.info("Skipping ESD step (disabled in configuration).")
@@ -1064,7 +1069,7 @@ class ReferenceUpdate(EOProcessingUnit):
         ReferenceUpdate.preflight(inputs, adfs, **kwargs)
 
         # 1. Extract base inputs and retain upstream pipeline parameters
-        slcs = inputs["slcs"]
+        slcs = _normalize_input_slcs(inputs["slcs"])
         all_params = slcs.attrs["params"]
         params = all_params[0]["execution_parameters"]
 
@@ -1209,7 +1214,7 @@ class CMLP(EOProcessingUnit):
         CMLP.preflight(inputs, adfs, **kwargs)
 
         # 1. Extract base inputs and retain upstream pipeline parameters
-        slcs = inputs["slcs"]
+        slcs = _normalize_input_slcs(inputs["slcs"])
         all_params = slcs.attrs["params"]
         params = all_params[0]["execution_parameters"]
 
@@ -1306,7 +1311,7 @@ class Geocoding(EOProcessingUnit):
     @classmethod
     def get_mandatory_input_list(cls, mode=None, **kwargs):
         """Retrieve the list of mandatory input datasets required by this unit."""
-        return ["cmlp", "slcs", "simulation_ref", "simulation_ml"]
+        return ["cmlp", "slcs"]
 
     @classmethod
     def get_mandatory_adf_list(cls, mode=None, **kwargs):
@@ -1358,10 +1363,11 @@ class Geocoding(EOProcessingUnit):
         Geocoding.preflight(inputs, adfs, **kwargs)
 
         # 1. Extract base inputs and retain upstream pipeline parameters
+        slcs = _normalize_input_slcs(inputs["slcs"])
+        multiburst = "bursts" in slcs
         cmlp_tree = inputs["cmlp"]
-        slcs = inputs["slcs"]
-        simulation_tree = inputs["simulation_ref"]
-        simulation_ml_tree = inputs["simulation_ml"]
+        # simulation_tree = inputs["simulation_ref"]
+        # simulation_ml_tree = inputs["simulation_ml"]
 
         all_params = cmlp_tree.attrs["params"]
         params = all_params[0]["execution_parameters"]
@@ -1410,6 +1416,14 @@ class Geocoding(EOProcessingUnit):
 
         log_processing_parameters(execution_parameters, self, logger)
 
+
+        simulation_tree, simulation_ml_tree = get_simulation_trees(
+            slcs=slcs,
+            working_directory=working_directory_reference_db_static,
+            reference_id=reference_id,
+            multiburst=multiburst,
+            enable_dask=enable_dask,
+        )
         # 6. Core geocoding stack processing
         gmlp = stack_gmlp(
             cmlp_tree=cmlp_tree,

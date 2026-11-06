@@ -63,8 +63,6 @@ workflow:
     inputs:
       cmlp: cmlp.cmlp
       slcs: coregistration.slcs
-      simulation_ref: reference_geometry.simulation_ref
-      simulation_ml: reference_geometry.simulation_ml
     parameters:
       spacing: {x: 50, y: 50}
     adfs:

@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from pathlib import Path
 
 import pytest
-import rioxarray
 import xarray as xr
 import yaml
 from cop_ard_app.io import is_local
@@ -29,50 +27,60 @@ from cop_ard_processor.structure import check_ARD_outputs
 from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
-yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-007" / "2023-08-08.yaml"
+yaml_part1_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-007" / "2023-08-08-part1.yaml"
+yaml_part2_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-007" / "2023-08-08-part2.yaml"
 
 
 @pytest.mark.ard
 def test_payload():
-    """E2E Functional Test TC-ST-FUNC-007: GMLP IW mode (Naples) with specific posting and spacing dicts."""
-    with open(yaml_path, encoding="utf-8") as f:
-        payload = yaml.safe_load(f)
+    """E2E Functional Test TC-ST-FUNC-007: GMLP IW mode (Surat) with specific posting and spacing dicts."""
+    with open(yaml_part1_path, encoding="utf-8") as f:
+        payload_part1 = yaml.safe_load(f)
 
-    # 1. Execution & Log Capture Phase
+    with open(yaml_part2_path, encoding="utf-8") as f:
+        payload_part2 = yaml.safe_load(f)
+
+    updates = {}
+
+    # 1. Execution & Log Capture Phase (Sequential execution of part1 then part2)
     with capture_logs() as captured:
-        output_stores = run_payload(payload, dry_run=False)
-        updates = {}
+        output_stores_1 = run_payload(payload_part1, dry_run=False)
+        output_stores_2 = run_payload(payload_part2, dry_run=False)
 
-        # 2. Output Validation Phase
-        for output, output_store in output_stores.items():
-            logger.info(f"Checking output store: {output}")
-            logger.info(f"Store metadata: {output_store}")
+    # Merge output stores from both parts
+    output_stores = {**output_stores_1, **output_stores_2}
 
-            storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
-            storage_opts = is_local(output_store["path"], storage_opts)
+    # 2. Output Validation Phase
+    for output, output_store in output_stores.items():
+        logger.info(f"Checking output store: {output}")
+        logger.info(f"Store metadata: {output_store}")
 
-            data = xr.open_datatree(
-                output_store["path"],
-                engine="zarr",
-                chunks={},
-                storage_options=storage_opts,
-            )
+        storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
+        storage_opts = is_local(output_store["path"], storage_opts)
 
-            if output not in ["cslcs", "gmlp"]:
-                updates[output] = data
-                continue
+        data = xr.open_datatree(
+            output_store["path"],
+            engine="zarr",
+            chunks={},
+            storage_options=storage_opts,
+        )
 
-            for element in data.values():
-                check_ARD_outputs(element, output, logger=logger)
+        if output not in ["cslcs", "gmlp"]:
+            updates[output] = data
+            continue
 
-                # Verify single-polarization isolation for GMLP Phase measurement
-                if output == "gmlp":
-                    pols = set(element.measurements.phase.polarization.values.astype(str))
-                    assert pols == {"VV"}, (
-                        f"Pass Criteria Failed: Single-polarization check failed for GMLP product. "
-                        f"Expected strictly {{'VV'}}, but found: {pols}"
-                    )
-                    assert CRS(element.measurements.to_dataset().phase.rio.crs).to_2d().to_string() == "EPSG:32755"
+        for element in data.values():
+            check_ARD_outputs(element, output, logger=logger)
+
+            # Verify single-polarization isolation for GMLP Phase measurement
+            if output == "gmlp":
+                pols = set(element.measurements.phase.polarization.values.astype(str))
+                assert pols == {"VV"}, (
+                    f"Pass Criteria Failed: Single-polarization check failed for GMLP product. "
+                    f"Expected strictly {{'VV'}}, but found: {pols}"
+                )
+                assert CRS(element.measurements.to_dataset().phase.rio.crs).to_2d().to_string() == "EPSG:32755"
+
     captured_events = [str(log.get("event", "")) for log in captured]
     captured_logs_text = "\n".join(captured_events)
 
@@ -118,7 +126,7 @@ def test_payload():
         f"Captured logs:\n{captured_logs_text}"
     )
 
-    # 6. Optional Steps Bypass Verification
+    # 5. Optional Steps Bypass Verification
     bypassed_steps = [
         "external orbit",
         "image matching",
@@ -130,4 +138,29 @@ def test_payload():
         assert any(expected_skip_log in event for event in captured_events), (
             f"Pass Criteria Failed: Mandatory skip trace '{expected_skip_log}' was not found in execution logs.\n"
             f"Captured events:\n{captured_logs_text}"
+        )
+
+    # 6. Reference Database Persistence (if applicable for reference updates)
+    if "current_reference" in updates and "stable_references" in updates:
+        logger.debug("SAVING CURRENT REFERENCE")
+        refdb_path = None
+        for p in (payload_part1, payload_part2):
+            for adf in p.get("io", {}).get("adfs", []):
+                if adf.get("id") == "REFDB":
+                    refdb_path = adf.get("path")
+                    break
+            if refdb_path:
+                break
+
+        reference_id = None
+        for step in payload_part1.get("workflow", []):
+            if step.get("name") == "ingestion":
+                reference_id = step.get("parameters", {}).get("reference_id")
+                break
+
+        update_reference_database(
+            updates["current_reference"],
+            updates["stable_references"],
+            f"{refdb_path}/reference_db_dynamic",
+            reference_id=reference_id,
         )

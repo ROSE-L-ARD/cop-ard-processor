@@ -19,12 +19,12 @@
         "simulation_ref": {
           "type": "product",
           "spec": {},
-          "min_occurs": 1
+          "min_occurs": 0
         },
         "simulation_ml": {
           "type": "product",
           "spec": {},
-          "min_occurs": 1
+          "min_occurs": 0
         }
       },
       "adfs": {
