@@ -1,3 +1,23 @@
+# Copyright 2026 B-Open
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Breakpoint management and interactive inspection utilities for COP ARD processing units.
+
+Provides the `resumable_breakpoint` decorator to cache intermediate execution states
+to disk (e.g., Zarr stores) and allow downstream pipeline stages to resume execution
+without re-running expensive upstream processing steps.
+"""
+
 import os
 from functools import wraps
 from typing import Any, Callable
@@ -11,6 +31,17 @@ from eopf.exceptions.errors import EOConfigurationError, InvalidConfigurationErr
 
 
 def _inspection_sandbox(breakpoint_data: dict, breakpoint_identifier: str, log_obj: Any = logger):
+    """Launch an interactive IPython inspection shell on intermediate breakpoint data.
+
+    Parameters
+    ----------
+    breakpoint_data : dict
+        Dictionary containing intermediate output objects to inspect.
+    breakpoint_identifier : str
+        Identifier name of the active breakpoint.
+    log_obj : Any, default logger
+        Logger instance used to emit diagnostic messages.
+    """
     try:
         import IPython
 
@@ -25,6 +56,34 @@ def resumable_breakpoint(
     expected_outputs: int = 1,
     optional_outputs: list[str] = [],
 ) -> Callable[..., Any]:
+    """Decorator factory configuring resumable disk checkpoints and debugging for processing units.
+
+    Registers breakpoint and inspection parameters in `EOConfiguration`, restores persisted
+    outputs when available, and saves newly computed execution outputs to Zarr stores.
+
+    Parameters
+    ----------
+    identifier : str
+        Unique identifier name for the processing breakpoint.
+    description : str, optional
+        Human-readable description for parameter registration.
+    expected_outputs : int, default 1
+        Number of output stores expected to consider the breakpoint cache valid and complete.
+    optional_outputs : list of str, default []
+        List of optional dictionary keys to populate with None if missing from disk.
+
+    Returns
+    -------
+    Callable
+        Decorator wrapping the target execution method.
+
+    Raises
+    ------
+    InvalidConfigurationError
+        If `identifier` is a reserved keyword name.
+    EOConfigurationError
+        If a breakpoint parameter with the same identifier has already been registered.
+    """
     if identifier in ["activate_all", "folder", "persist"]:
         raise InvalidConfigurationError(f"{identifier} is not allowed for breakpoint name")
     filename_prefix = f"breakpoint_{identifier}_"
@@ -47,11 +106,42 @@ def resumable_breakpoint(
     )
 
     def decorator(func_in: Callable[..., Any]) -> Callable[..., Any]:
+        """Wrap the target callable with breakpoint retrieval, execution, and persistence logic.
+
+        Parameters
+        ----------
+        func_in : Callable
+            The target execution callable (e.g. `EOProcessingUnit.run`).
+
+        Returns
+        -------
+        Callable
+            The wrapped callable intercepting execution.
+        """
         @wraps(func_in)
         def _method_wrapper(
             *args: Any,
             **kwargs: Any,
         ) -> Any:
+            """Execute or resume unit execution and handle breakpoint storage and inspection.
+
+            Parameters
+            ----------
+            *args : Any
+                Positional arguments forwarded to `func_in`.
+            **kwargs : Any
+                Keyword arguments forwarded to `func_in`.
+
+            Returns
+            -------
+            Any
+                Dictionary containing processed or restored `xr.DataTree` objects.
+
+            Raises
+            ------
+            ValueError
+                If output is not a dictionary containing exclusively `xr.DataTree` values.
+            """
             activate_inspection = bool(EOConfiguration().get(f"inspections__{identifier}", default=False))
             activate_inspection |= bool(EOConfiguration().get("inspections__activate_all", default=False))
             activate_breakpoint = bool(EOConfiguration().get(f"breakpoints__{identifier}", default=False))
