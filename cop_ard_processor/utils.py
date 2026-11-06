@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utility functions, file path handlers, and execution logging for COP ARD Processor."""
+
 import functools
 import json
 import logging
@@ -49,8 +50,10 @@ def log_time(block_id: str, logger: logging.Logger):
     Callable
         Decorator wrapping the target method or function.
     """
+
     def decorator(method: Callable[..., Any]) -> Callable[..., Any]:
         """Wrap the method with timing measurement logs."""
+
         @functools.wraps(method)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             """Execute wrapped callable and record wall-clock elapsed time."""
