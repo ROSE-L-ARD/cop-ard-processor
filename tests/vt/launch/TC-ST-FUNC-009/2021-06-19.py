@@ -27,41 +27,49 @@ from cop_ard_processor.structure import check_ARD_outputs
 from scripts.run_payload import run_payload
 
 RP_BASE_PATH = Path(__file__).parents[2]
-yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-009" / "2021-06-19.yaml"
+yaml_part1_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-009" / "2021-06-19-part1.yaml"
+yaml_part2_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-009" / "2021-06-19-part2.yaml"
 
 
 @pytest.mark.ard
 def test_payload():
-    with open(yaml_path, encoding="utf-8") as f:
-        payload = yaml.safe_load(f)
+    with open(yaml_part1_path, encoding="utf-8") as f:
+        payload_part1 = yaml.safe_load(f)
+
+    with open(yaml_part2_path, encoding="utf-8") as f:
+        payload_part2 = yaml.safe_load(f)
 
     updates = {}
 
-    # 1. Execution & Log Capture Phase
+    # 1. Execution & Log Capture Phase (Sequential execution of part1 then part2)
     with capture_logs() as captured:
-        output_stores = run_payload(payload, dry_run=False)
+        output_stores_1 = run_payload(payload_part1, dry_run=False)
+        output_stores_2 = run_payload(payload_part2, dry_run=False)
 
-        # 2. Output Validation Phase
-        for output, output_store in output_stores.items():
-            storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
-            storage_opts = is_local(output_store["path"], storage_opts)
+    # Merge outputs from both parts
+    output_stores = {**output_stores_1, **output_stores_2}
 
-            data = xr.open_datatree(output_store["path"], engine="zarr", chunks={}, storage_options=storage_opts)
-            updates[output] = data
+    # 2. Output Validation Phase
+    for output, output_store in output_stores.items():
+        storage_opts = output_store.get("storage_options", {}) if isinstance(output_store, dict) else {}
+        storage_opts = is_local(output_store["path"], storage_opts)
 
-            if output not in ["cslcs", "gmlp"]:
-                continue
+        data = xr.open_datatree(output_store["path"], engine="zarr", chunks={}, storage_options=storage_opts)
+        updates[output] = data
 
-            for element in data.values():
-                check_ARD_outputs(element, output, logger=logger)
+        if output not in ["cslcs", "gmlp"]:
+            continue
 
-                if output == "gmlp":
-                    pols = set(element.measurements.phase.polarization.values.astype(str))
-                    assert pols == {"VV"}, (
-                        f"Pass Criteria Failed: Single-polarization check failed for GMLP product. "
-                        f"Expected strictly {{'VV'}}, but found: {pols}"
-                    )
-                    assert CRS(element.measurements.to_dataset().phase.rio.crs).to_2d().to_string() == "EPSG:32628"
+        for element in data.values():
+            check_ARD_outputs(element, output, logger=logger)
+
+            if output == "gmlp":
+                pols = set(element.measurements.phase.polarization.values.astype(str))
+                assert pols == {"VV"}, (
+                    f"Pass Criteria Failed: Single-polarization check failed for GMLP product. "
+                    f"Expected strictly {{'VV'}}, but found: {pols}"
+                )
+                assert CRS(element.measurements.to_dataset().phase.rio.crs).to_2d().to_string() == "EPSG:32628"
 
     captured_events = [str(log.get("event", "")) for log in captured]
     captured_logs_text = "\n".join(captured_events)
@@ -127,14 +135,17 @@ def test_payload():
         logger.debug("SAVING CURRENT REFERENCE")
         # Dynamically retrieve REFDB path from payload IO definition
         refdb_path = None
-        for adf in payload.get("io", {}).get("adfs", []):
-            if adf.get("id") == "REFDB":
-                refdb_path = adf.get("path")
+        for p in (payload_part1, payload_part2):
+            for adf in p.get("io", {}).get("adfs", []):
+                if adf.get("id") == "REFDB":
+                    refdb_path = adf.get("path")
+                    break
+            if refdb_path:
                 break
 
-        # Dynamically retrieve reference_id from ingestion step parameters
+        # Dynamically retrieve reference_id from ingestion step parameters in part1
         reference_id = None
-        for step in payload.get("workflow", []):
+        for step in payload_part1.get("workflow", []):
             if step.get("name") == "ingestion":
                 reference_id = step.get("parameters", {}).get("reference_id")
                 break
