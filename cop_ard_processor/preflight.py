@@ -82,6 +82,15 @@ class PreflightError(ValueError):
     """
 
     def __init__(self, violations: Sequence[Violation], unit: str = "Ingestion") -> None:
+        """Initialize the PreflightError instance with violations and target unit.
+
+        Parameters
+        ----------
+        violations : Sequence[Violation]
+            Collection of validation violations detected by the preflight engine.
+        unit : str, default "Ingestion"
+            Identifier or name of the processing unit being checked.
+        """
         self.violations = list(violations)
         self.unit = unit
         lines = [f"{unit} preflight failed with {len(self.violations)} violation(s):"]

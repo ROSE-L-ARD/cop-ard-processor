@@ -1,4 +1,4 @@
-# Copyright 2024 European Union
+# Copyright 2026 B-Open
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ from eopf.config import EOConfiguration
 
 
 def init_logging() -> None:
+    """Initialize logging configuration from EOConfiguration."""
     log_path = EOConfiguration().get("logging__custom_config", default=None)
     configure_logger(log_path)
 
