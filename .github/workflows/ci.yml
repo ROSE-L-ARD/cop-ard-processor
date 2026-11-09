@@ -26,14 +26,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Configure Git credentials
-        if: ${{ secrets.GIT_PAT != '' }}
-        env:
-          GH_TOKEN: ${{ secrets.GIT_PAT }}
-        run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
-          gh auth setup-git
-
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
