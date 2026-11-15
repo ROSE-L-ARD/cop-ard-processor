@@ -76,25 +76,25 @@ io:
       path: /data/ROSEL/GPP_007/dem
   output_products:
     - id: cslcs
-      path: /data/ROSEL/GPP_007/EOPF/OUTPUT/TC-ST-FUNC-011/CSLC/cslcs_1999-12-31.zarr
+      path: /data/ROSEL/GPP_007/EOPF/OUTPUT/TC-ST-FUNC-011/CSLC/cslcs_2000-01-01.zarr
       engine: cpm_zarr
       type: file
       writer_params:
         mode: "w"
     - id: gmlp
-      path: /data/ROSEL/GPP_007/EOPF/OUTPUT/TC-ST-FUNC-011/GMLP/gmlp_1999-12-31.zarr
+      path: /data/ROSEL/GPP_007/EOPF/OUTPUT/TC-ST-FUNC-011/GMLP/gmlp_2000-01-01.zarr
       engine: cpm_zarr
       type: file
       writer_params:
         mode: "w"
     - id: current_reference
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-FUNC-011/CURRENT_REFERENCE/current_reference_1999-12-31.zarr
+      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-FUNC-011/CURRENT_REFERENCE/current_reference_2000-01-01.zarr
       engine: cpm_zarr
       type: file
       writer_params:
         mode: "w"
     - id: stable_references
-      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-FUNC-011/STABLE_REFERENCES/stable_reference_1999-12-31.zarr
+      path: /data/SENTINEL1/SURAT/EOPF/OUTPUT/TC-ST-FUNC-011/STABLE_REFERENCES/stable_reference_2000-01-01.zarr
       engine: cpm_zarr
       type: file
       writer_params:

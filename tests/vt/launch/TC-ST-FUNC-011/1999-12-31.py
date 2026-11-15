@@ -61,6 +61,14 @@ def test_payload():
 
             for element in data.values():
                 check_ARD_outputs(element, output, logger=logger)
+
+                if output in ["cslcs", "gmlp"]:
+                    meas_group = element.measurements.cslc if output == "cslcs" else element.measurements
+                    pols = set(meas_group.polarization.values.astype(str))
+                    assert pols == {"HV", "HH"}, (
+                        f"Pass Criteria Failed: Dual-polarization check failed for ROSE-L RIWS {output} product. "
+                        f"Expected {{'HH', 'HV'}}, but found: {pols}"
+                    )
     captured_events = [str(log.get("event", "")) for log in captured]
     captured_logs_text = "\n".join(captured_events)
 

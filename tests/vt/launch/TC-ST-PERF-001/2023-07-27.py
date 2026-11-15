@@ -125,8 +125,8 @@ def test_payload():
         else:
             time_gmlp += v
 
-    assert time_coreg <= 5 * 60
     assert time_coreg <= 2 * 60
+    assert time_gmlp <= 45
 
     # 4. Extract and verify specific pipeline parameters (Posting, Spacing, CRS)
     posting_found = False

@@ -15,7 +15,10 @@
 from pathlib import Path
 
 import pytest
+import rioxarray  # noqa: F401
+import xarray as xr
 import yaml
+from cop_ard_core.logger import logger
 from structlog.testing import capture_logs
 
 from scripts.run_payload import run_payload
@@ -24,13 +27,42 @@ RP_BASE_PATH = Path(__file__).parents[2]
 yaml_path = RP_BASE_PATH / "triggering" / "TC-ST-FUNC-005" / "REFERENCE.yaml"
 
 
+def _get_zarr_dem_resolution(dem_path: Path) -> tuple[float, float]:
+    """Get DEM resolution."""
+    if not dem_path.exists():
+        raise FileNotFoundError(f"Input DEM Zarr path not found: {dem_path}")
+
+    ds = xr.open_zarr(dem_path)
+
+    if not ds.data_vars:
+        dt = xr.open_datatree(dem_path, engine="zarr")
+        for node in dt.subtree:
+            if node.ds is not None and node.ds.data_vars:
+                ds = node.ds
+                break
+
+    x_res, y_res = ds.rio.resolution()
+    return abs(float(x_res)), abs(float(y_res))
+
+
 @pytest.mark.ard
 def test_payload():
     """E2E Functional Test TC-ST-FUNC-005: Reference stack creation & DEM interpolation validation."""
     with open(yaml_path, encoding="utf-8") as f:
         payload = yaml.safe_load(f)
 
-    # 1. Execute reference stack creation with log capture
+    adfs = {adf["id"]: Path(adf["path"]) for adf in payload["io"]["adfs"]}
+    dem_path = adfs["DEM"]
+
+    _, y_res = _get_zarr_dem_resolution(dem_path)
+    expected_glo90_res = 3.0 / 3600.0  # GLO-90 = 3 arcsec (~90 m); GLO-30 = 1/3600 deg
+
+    assert y_res == pytest.approx(expected_glo90_res, rel=1e-3), (
+        f"Pass Criteria Failed: Input DEM Zarr at '{dem_path}' has latitude resolution {y_res:.8f} deg, "
+        f"expected GLO-90 resolution ~{expected_glo90_res:.8f} deg (3/3600 deg)."
+    )
+
+    # 2. Execute reference stack creation with log capture
     with capture_logs() as captured:
         run_payload(payload, dry_run=False)
 

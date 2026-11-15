@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from pathlib import Path
 
 import pytest
@@ -70,10 +71,10 @@ def test_payload():
                         f"Expected strictly {{'VV'}}, but found: {pols}"
                     )
                     assert CRS(element.measurements.to_dataset().phase.rio.crs).to_2d().to_string() == "EPSG:32755"
+
     captured_events = [str(log.get("event", "")) for log in captured]
     captured_logs_text = "\n".join(captured_events)
 
-    # 3. Mandatory Processing Units Verification for GMLP Pipeline
     mandatory_units = [
         "Ingestion Unit",
         "ReferenceDEM Unit",
@@ -82,12 +83,49 @@ def test_payload():
         "CMLP Unit",
         "Geocoding Unit",
     ]
+
+    # Dictionary to store the extracted times
+    execution_times = {}
+
     for unit in mandatory_units:
-        expected_trace = f"Started : {unit}"
-        assert any(expected_trace in event for event in captured_events), (
-            f"Pass Criteria Failed: Mandatory log trace '{expected_trace}' was not found in captured execution logs.\n"
+        # 1. Verify the 'Started' trace
+        expected_start = f"Started : {unit}"
+        assert any(expected_start in event for event in captured_events), (
+            f"Pass Criteria Failed: Mandatory log trace '{expected_start}' was not found.\n"
             f"Captured events:\n{captured_logs_text}"
         )
+
+        # 2. Extract the execution time from the 'Completed' trace using regex
+        # Pattern matches: "Completed : <unit_name> in <numbers> seconds"
+        completion_pattern = rf"Completed : {unit} in ([\d\.]+) seconds"
+        unit_time = None
+
+        for event in captured_events:
+            match = re.search(completion_pattern, event)
+            if match:
+                unit_time = float(match.group(1))  # Extract the captured time group
+                break
+
+        assert unit_time is not None, f"Pass Criteria Failed: Completion log trace for '{unit}' was not found."
+
+        # Save the time
+        execution_times[unit] = unit_time
+
+    # Optional: Log or print the extracted times for your test reports
+    logger.info("--- Execution Times Summary ---")
+    for unit, duration in execution_times.items():
+        logger.info(f"{unit}: {duration:.4f} seconds")
+
+    time_coreg = 0.0
+    time_gmlp = 0.0
+    for k, v in execution_times.items():
+        if k in ["Ingestion Unit", "ReferenceDEM Unit", "ReferenceGeometry Unit", "Coregistration Unit"]:
+            time_coreg += v
+        else:
+            time_gmlp += v
+
+    assert time_coreg <= 2 * 60
+    assert time_gmlp <= 45
 
     # 4. Extract and verify specific pipeline parameters (Posting, Spacing, CRS)
     posting_found = False
