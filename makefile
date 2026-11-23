@@ -8,7 +8,7 @@ GRID_FILE ?= us_nga_egm08_25.tif
 # Code block visibility in the compiled Typst PDF: make pdf CODE=hide|show
 CODE := hide
 CODEFLAG = $(if $(filter hide,$(CODE)),--hide-code,)
-.PHONY: all install proj format lint security complexity typecheck check html pdf prep restore check-secrets protect-secrets tests
+.PHONY: all install proj format lint security complexity typecheck check html pdf prep restore check-secrets protect-secrets fix-alerts tests
 
 all: format check
 
@@ -47,6 +47,23 @@ check-secrets:
 protect-secrets:
 	@echo "==> Scanning uncommitted changes for secrets..."
 	gitleaks protect --staged --verbose --redact
+
+fix-alerts:
+	@set -e; \
+	echo "==> Checking open Dependabot alerts..."; \
+	packages=$$(gh api "repos/{owner}/{repo}/dependabot/alerts?state=open&ecosystem=pip&per_page=100" \
+		--jq '[.[].dependency.package.name] | unique | .[]'); \
+	if [ -z "$$packages" ]; then \
+		echo "No open Dependabot alerts found."; \
+		exit 0; \
+	fi; \
+	echo "==> Upgrading vulnerable packages:"; \
+	echo "$$packages"; \
+	args=""; \
+	for pkg in $$packages; do \
+		args="$$args --upgrade-package $$pkg"; \
+	done; \
+	uv lock $$args
 
 cslc-qualification-notebook:
 	uv venv --python 3.12 .venv-qual --clear
