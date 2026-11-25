@@ -50,6 +50,10 @@ protect-secrets:
 
 fix-alerts:
 	@set -e; \
+	if [ -n "$$(git status --porcelain -uno)" ]; then \
+		echo "Error: Tracked files have uncommitted changes. Commit or stash them first."; \
+		exit 1; \
+	fi; \
 	echo "==> Checking open Dependabot alerts..."; \
 	packages=$$(gh api "repos/{owner}/{repo}/dependabot/alerts?state=open&ecosystem=pip&per_page=100" \
 		--jq '[.[].dependency.package.name] | unique | .[]'); \
@@ -57,13 +61,31 @@ fix-alerts:
 		echo "No open Dependabot alerts found."; \
 		exit 0; \
 	fi; \
-	echo "==> Upgrading vulnerable packages:"; \
+	echo "==> Vulnerable packages found:"; \
 	echo "$$packages"; \
+	branch="fix/dependabot-alerts-$$(date +%Y%m%d-%H%M%S)"; \
+	git fetch origin main; \
+	git checkout -b "$$branch" origin/main; \
 	args=""; \
 	for pkg in $$packages; do \
 		args="$$args --upgrade-package $$pkg"; \
 	done; \
-	uv lock $$args
+	uv lock $$args; \
+	if git diff --quiet uv.lock; then \
+		echo "==> No changes in uv.lock (packages may be constrained). Cleaning up..."; \
+		git checkout -; \
+		git branch -D "$$branch"; \
+		exit 0; \
+	fi; \
+	pkg_list=$$(echo "$$packages" | sed 's/^/- /'); \
+	git add uv.lock; \
+	git commit -m "fix(deps): patch open Dependabot alerts in uv.lock" -m "$$pkg_list"; \
+	git push -u origin "$$branch"; \
+	gh pr create \
+		--base main \
+		--head "$$branch" \
+		--title "fix(deps): patch open Dependabot alerts" \
+		--body "$$(printf 'Automated update of vulnerable packages reported by Dependabot alerts:\n\n%s' "$$pkg_list")"
 
 cslc-qualification-notebook:
 	uv venv --python 3.12 .venv-qual --clear

@@ -92,7 +92,7 @@ x-worker-node: &worker-node
   <<: *base-node
   depends_on:
     scheduler:
-      condition: service_healthy
+      condition: service_started
   deploy:
     resources:
       limits:
@@ -106,17 +106,6 @@ services:
     ports:
       - "127.0.0.1:8786:8786"
       - "127.0.0.1:8787:8787"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import socket; s = socket.socket(); s.connect(('127.0.0.1', 8786))",
-        ]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   worker-1:
     <<: *worker-node
